@@ -1,0 +1,2 @@
+# SingularTranspiler
+singular->julia
