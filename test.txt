@@ -1,0 +1,9 @@
+proc f(int m, int n)
+{
+    bigintmat A[m][n];
+    A = m, (1, n), m + n;
+    A[m, n] = m*n;
+    return(2*A);
+};
+
+
