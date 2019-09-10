@@ -7,7 +7,11 @@ end
 
 # BigInt same
 
-# String same
+# Singular splats all arguments by default, while we need ... in Julia
+# The julia String is iterable, so we need a NiString as a not-iterable String container
+struct NiString
+    string::String
+end
 
 struct IntVec
     vector::Vector{Int}
@@ -29,14 +33,37 @@ struct List
     list::ListData
 end
 
-const SingType = Union{Int, BigInt, IntVec, IntMat, BigIntMat, List}
+#=
+it = iterate(x)
+while it !== nothing
+    i, state = it
+
+    it = iterate(x, state)
+end
+=#
+
+function Base.iterate(a::IntVec)
+    return iterate(a, 0)
+end
+
+function Base.iterate(a::IntVec, state)
+    if state == 0
+        return (a, state + 1)
+    else
+        return nothing
+    end
+end
+
+
+
+const SingType = Union{Int, BigInt, NiString, IntVec, IntMat, BigIntMat, List}
 
 const _IntVec    = Union{IntVec, Vector{Int}}
 const _IntMat    = Union{IntMat, Array{Int, 2}}
 const _BigIntMat = Union{BigIntMat, Array{BigInt, 2}}
 const _List      = Union{List, ListData}
 
-const _SingType = Union{Int, BigInt, IntVec, IntMat, BigIntMat, List, Vector{Int}, Array{Int, 2}, Array{BigInt, 2}, ListData}
+const _SingType = Union{Int, BigInt, NiString, IntVec, IntMat, BigIntMat, List, Vector{Int}, Array{Int, 2}, Array{BigInt, 2}, ListData}
 
 
 function Base.deepcopy_internal(a::IntVec, dict::IdDict)
@@ -66,7 +93,9 @@ scopy(a::Int) = a
 
 scopy(a::BigInt) = a
 
-scopy(a::Vector{Int}) = IntVector(deepcopy(a))
+scopy(a::NiString) = a
+
+scopy(a::Vector{Int}) = IntVec(deepcopy(a))
 scopy(a::IntVec) = a
 
 scopy(a::Array{Int, 2}) = IntMat(deepcopy(a))
@@ -100,7 +129,7 @@ sref(a::Int) = a
 
 sref(a::BigInt) = a
 
-sref(a::String) = a
+sref(a::NiString) = a
 
 sref(a::Vector{Int}) = a
 sref(a::IntVec) = a.vector
@@ -117,6 +146,8 @@ sref(a::List) = a.list
 
 ########### type conversions ##################################################
 # each conversion returns an object of the corresponding type
+
+################### int ########################
 
 function sconvert2int(a::Int)
     return a
@@ -136,6 +167,7 @@ function sconvert2int(a)
     return Int(0)
 end
 
+################### bigint ########################
 
 function sconvert2bigint(a::Int)
     return BigInt(a)
@@ -150,6 +182,40 @@ function sconvert2bigint(a)
     return BigInt(0)
 end
 
+################### string ########################
+
+function sconvert2string(a::NiString)
+    return a
+end
+
+function sconvert2string(a::NiString)
+    error("cannot convert to string")
+    return NiString("")
+end
+
+################### intvec ########################
+
+function sconvert2intvec(a::IntVec)
+    return a
+end
+
+function sconvert2intvec(a::Array{Int})
+    return IntVec(deepcopy(a))
+end
+
+function sconvert2intvec(a::Tuple{Vararg{SingType}})
+    v = Int[];
+    for e in a
+        if e isa IntVec
+            append!(v, e.vector)
+        else
+            push!(v, sconvert2int(e))
+        end
+    end
+    return IntVec(v)
+end
+
+################### intmat ########################
 
 function sconvert2intmat(a::IntMat)
     return a
@@ -382,12 +448,18 @@ function sdelete(a::_List, i::Int)
 end
 
 ################ tuples ########################################################
+#
+# all splatting is done a transpile time
+#function smaketuple(v...)
+#    g = (x isa Tuple ? x : (x,) for x in v)
+#    r = tuple(Iterators.flatten(g)...)
+#    return r
+#end
 
-function smaketuple(v...)
-    g = (x isa Tuple ? x : (x,) for x in v)
-    r = tuple(Iterators.flatten(g)...)
-    return r
+function schecktuplelength(a::Tuple{Vararg{SingType}}, n::Int)
+    length(a) == n || error("expected "*string(n)*" arguments for parallel assignment; got "*string(length(a)))
 end
+
 
 ########### arithmetic operations ##############################################
 
@@ -396,36 +468,21 @@ splus(a::Int, b::BigInt) = a + b
 splus(a::BigInt, b::Int) = a + b
 splus(a::BigInt, b::BigInt) = a + b
 
-sminus(a::Int, b::Int) = Base.checked_sub(a, b)
-sminus(a::Int, b::BigInt) = a + b
-sminus(a::BigInt, b::Int) = a + b
-sminus(a::BigInt, b::BigInt) = a + b
-
-stimes(a::Int, b::Int) = Base.checked_mul(a, b)
-stimes(a::Int, b::BigInt) = a * b
-stimes(a::BigInt, b::Int) = a * b
-stimes(a::BigInt, b::BigInt) = a * b
-
-
 function splus(a::_List, b::_List)
     return List(ListData(vcat(sedit(a).data, sedit(b).data)))
 end
-
 
 function splus(a::Tuple{Vararg{SingType}}, b::_SingType)
     return Tuple(i == 1 ? splus(a[i], b) : a[i] for i in 1:length(a));
 end
 
-
 function splus(a::_SingType, b::Tuple{Vararg{SingType}})
     return Tuple(i == 1 ? splus(a, b[i]) : b[i] for i in 1:length(b));
 end
 
-
 function splus(a::Tuple{Vararg{SingType}}, b::Tuple{Vararg{SingType}})
     return Tuple(splus(a[i], b[i]) for i in 1:min(length(a), length(b)));
 end
-
 
 function splus(a::_IntVec, b::_IntVec)
     A = sref(a);
@@ -433,42 +490,50 @@ function splus(a::_IntVec, b::_IntVec)
     return IntVec([(i <= length(A) ? A[i] : 0) + (i <= length(B) ? B[i] : 0) for i in 1:max(length(A), length(B))]);
 end
 
-
 function splus(a::_IntVec, b::Int)
     A = sref(a);
-    return IntVec([A[i] + b for i in 1:length(A)]);
+    return IntVec([splus(A[i], b) for i in 1:length(A)])
 end
-
 
 function splus(a::Int, b::_IntVec)
     B = sref(b);
-    return IntVec([a + B[i] for i in 1:length(A)]);
+    return IntVec([splus(a, B[i]) for i in 1:length(B)])
 end
-
 
 function splus(a::_IntMat, b::Int)
     A = sedit(a)
     nrows, ncols = size(A)
     for i in 1:min(nrows, ncols)
-        A[i, i] = A[i, i] + b
+        A[i, i] = splus(A[i, i], b)
     end
     return IntMat(A)
 end
-
 
 function splus(a::Int, b::_IntMat)
-    B = sedit(B)
+    B = sedit(b)
     nrows, ncols = size(B)
     for i in 1:min(nrows, ncols)
-        B[i, i] += a + B[i, i]
+        B[i, i] = splus(a, B[i, i])
     end
-    return IntMat(A)
+    return IntMat(B)
 end
-
 
 function splus(a::_IntMat, b::_IntMat)
     return IntMat(sref(a) + sref(b))
 end
+
+sminus(a::Int) = Base.checked_neg(a)
+
+sminus(a::Int, b::Int) = Base.checked_sub(a, b)
+sminus(a::Int, b::BigInt) = a + b
+sminus(a::BigInt, b::Int) = a + b
+sminus(a::BigInt, b::BigInt) = a + b
+
+
+stimes(a::Int, b::Int) = Base.checked_mul(a, b)
+stimes(a::Int, b::BigInt) = a * b
+stimes(a::BigInt, b::Int) = a * b
+stimes(a::BigInt, b::BigInt) = a * b
 
 function stimes(a::_BigIntMat, b::_BigIntMat)
     return BigIntMat(sref(a) * sref(b))
@@ -672,6 +737,40 @@ function convert_extendedid(a::AstNode, env::AstEnv)
     end
 end
 
+#return array of generating non necessarily SingTypes, usefull probably only for passing to function
+#return is Array{Any}
+function make_tuple_array_nocopy(a::Array{Any})
+    b = Any[]
+    for i in 1:length(a)
+        if a[i] isa Expr && a[i].head == :tuple
+            append!(b, a[i].args)   # each of a[i].args should already be copied and splatted
+        else
+            push!(b, Expr(:(...), Expr(:call, :scopy, a[i]))) # TODO opt: copy and/or splat can be avoided somtimes
+        end
+    end
+    return b
+end
+
+#return array generating SingTypes, can construct a singular tuple with Expr(:tuple, ...)
+#return is Array{Any}
+function make_tuple_array_copy(a::Array{Any})
+    b = Any[]
+    for i in 1:length(a)
+        if a[i] isa Expr && a[i].head == :tuple
+            append!(b, a[i].args)   # each of a[i].args should already be copied and splatted
+        else
+            push!(b, Expr(:(...), Expr(:call, :scopy, a[i]))) # TODO opt: splat can be avoided somtimes
+        end
+    end
+    return b
+end
+
+
+function convert_stringexpr(a::AstNode, env::AstEnv)
+    @assert 0 < a.rule - @RULE_stringexpr(0) < 100
+    return NiString(a.child[1])
+end
+
 
 function convert_elemexpr(a::AstNode, env::AstEnv)
     @assert 0 < a.rule - @RULE_elemexpr(0) < 100
@@ -684,15 +783,17 @@ function convert_elemexpr(a::AstNode, env::AstEnv)
         else
             return x
         end
+    elseif a.rule == @RULE_elemexpr(10)
+        return convert_stringexpr(a.child[1], env)
     elseif a.rule == @RULE_elemexpr(37)
         b::Array{Any} = convert_exprlist(a.child[1], env)
         if length(b) == 1
             return b[1]
         else
-            return Expr(:call, :smaketuple, b...)
+            return Expr(:tuple, make_tuple_array_copy(b)...)
         end
     else
-        throw(TranspileError("internal error in convert_elemexpr " * string(a.rule)))
+        throw(TranspileError("internal error in convert_elemexpr "))
     end  
 end
 
@@ -709,8 +810,12 @@ function convert_expr_arithmetic(a::AstNode, env::AstEnv)
         return Expr(:call, :smod, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
     elseif a.rule == @RULE_expr_arithmetic(7)
         return Expr(:call, :sdivide, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
+    elseif a.rule == @RULE_expr_arithmetic(8)
+        return Expr(:call, :spower, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
+    elseif a.rule == @RULE_expr_arithmetic(18)
+        return Expr(:call, :sminus, convert_expr(a.child[1], env))
     else
-        throw(TranspileError("internal error in convert_expr_arithmetic "*string(a.rule)))
+        throw(TranspileError("internal error in convert_expr_arithmetic "))
     end
 end
 
@@ -721,12 +826,16 @@ function convert_expr(a::AstNode, env::AstEnv)
         return convert_expr_arithmetic(a.child[1], env)
     elseif a.rule == @RULE_expr(2)
         return convert_elemexpr(a.child[1], env)
+    elseif a.rule == @RULE_expr(3)
+        return Expr(:call, :sgetindex, convert_expr(a.child[1], env), convert_expr(a.child[2], env), convert_expr(a.child[3], env))
+    elseif a.rule == @RULE_expr(4)
+        return Expr(:call, :sgetindex, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
     else
         throw(TranspileError("internal error in convert_expr"))
     end
 end
 
-# return is a Any{Expr}
+# return is a Array{Any}
 function convert_exprlist(a::AstNode, env::AstEnv)
     r = Any[]
     for i = 1:length(a.child)
@@ -741,9 +850,9 @@ function convert_returncmd(a::AstNode, env::AstEnv)
     if a.rule == @RULE_returncmd(1)
         b::Array{Any} = convert_exprlist(a.child[1], env)
         if length(b) == 1
-            return Expr(:return, b[1])
+            return Expr(:return, b[1])  # TODO: do we need an scopy?
         else
-            return Expr(:return, Expr(:tuple, b...)) # TODO bug: splatting
+            return Expr(:return, Expr(:tuple, make_tuple_array_copy(b)...))
         end
     elseif a.rule == @RULE_returncmd(2)
         return Expr(:return)
@@ -753,29 +862,42 @@ function convert_returncmd(a::AstNode, env::AstEnv)
 end
 
 
-coerce_for_assignment(a::Expr, ::Type{Unknown})     = Expr(:call, :sconvert2poly, a)
-coerce_for_assignment(a::Expr, ::Type{Int})         = Expr(:call, :sconvert2int, a)
-coerce_for_assignment(a::Symbol, ::Type{Int})       = Expr(:call, :sconvert2int, a)
-coerce_for_assignment(a::Expr, ::Type{BigInt})      = Expr(:call, :sconvert2bigint, a)
-coerce_for_assignment(a::Expr, ::Type{String})      = Expr(:call, :sconvert2string, a)
-coerce_for_assignment(a::Expr, ::Type{IntVec})      = Expr(:call, :sconvert2intvec, a)
-coerce_for_assignment(a::Expr, ::Type{IntMat})      = Expr(:call, :sconvert2intmat, a)
-coerce_for_assignment(a::Expr, ::Type{BigIntMat})   = Expr(:call, :sconvert2bigintmat, a)
-coerce_for_assignment(a::Expr, ::Type{List})        = Expr(:call, :sconvert2list, a)
+coerce_for_assign(::Type{Unknown}, a::Expr)     = Expr(:call, :sconvert2poly, a)
+coerce_for_assign(::Type{Int}, a::Int)          = a
+coerce_for_assign(::Type{Int}, a::Expr)         = Expr(:call, :sconvert2int, a)
+coerce_for_assign(::Type{Int}, a::Symbol)       = Expr(:call, :sconvert2int, a)
+coerce_for_assign(::Type{BigInt}, a::BigInt)    = a
+coerce_for_assign(::Type{BigInt}, a::Int)       = BigInt(a)
+coerce_for_assign(::Type{BigInt}, a::Expr)      = Expr(:call, :sconvert2bigint, a)
+coerce_for_assign(::Type{NiString}, a::NiString)= a
+coerce_for_assign(::Type{NiString}, a::Expr)    = Expr(:call, :sconvert2string, a)
+coerce_for_assign(::Type{IntVec}, a::IntVec)    = a
+coerce_for_assign(::Type{IntVec}, a::Expr)      = Expr(:call, :sconvert2intvec, a)
+coerce_for_assign(::Type{IntMat}, a::Expr)      = Expr(:call, :sconvert2intmat, a)
+coerce_for_assign(::Type{BigIntMat}, a::Expr)   = Expr(:call, :sconvert2bigintmat, a)
+coerce_for_assign(::Type{List}, a::Expr)        = Expr(:call, :sconvert2list, a)
+
+
+stype_string(::Type{Int})       = "int"
+stype_string(::Type{BigInt})    = "bigint"
+stype_string(::Type{NiString})  = "string"
+stype_string(::Type{IntVec})    = "intvec"
+stype_string(::Type{IntMat})    = "intmat"
+stype_string(::Type{BigIntMat}) = "bigintmat"
+stype_string(::Type{List})      = "list"
 
 function assignment_to_symbol(left::Symbol, right, typ, env::AstEnv)
     if typ == IntMat || typ == BigIntMat
         Expr(:(=), left, Expr(:call, :sset, left, right))
     else
-        Expr(:(=), left, coerce_for_assignment(right, typ))
+        Expr(:(=), left, coerce_for_assign(typ, right))
     end
 end
 
 
 function push_assignment!(out::Expr, left::AstNode, right, env::AstEnv)
-    @assert 0 < left.rule - @RULE_expr(0) < 100
-    if left.rule == @RULE_expr(2)
-        a::AstNode = left.child[1]
+    if left.rule == @RULE_expr(2) || left.rule == @RULE_elemexpr(2)
+        a::AstNode = left.rule == @RULE_expr(2) ? left.child[1] : left
         @assert 0 < a.rule - @RULE_elemexpr(0) < 100
         if a.rule == @RULE_elemexpr(2)
             b::AstNode = a.child[1]
@@ -812,32 +934,33 @@ function convert_assign(a::AstNode, env::AstEnv)
     @assert 0 < a.rule - @RULE_assign(0) < 100
     if a.rule == @RULE_assign(1)
         left::AstNode = a.child[1];
-        if left.rule == @RULE_left_value(2)
-            llist::AstNode = left.child[1]
-            rlist::AstNode = a.child[2]
-            r = Expr(:block)
-            if length(llist.child) == 1
-                t = convert_exprlist(rlist, env)
-                if length(t) == 1
-                    push_assignment!(r, llist.child[1], t[1], env)
-                else
-                    push_assignment!(r, llist.child[1], Expr(:call, :smaketuple, t...), env)
-                end
-            else
-                t = gensym();
-                tuplearray = map(x-> Expr(:call, :scopy, ), convert_exprlist(rlist, env))
-                push!(r.args, Expr(:(=), t, Expr(:tuple, tuplearray))) # TODO: bug: splatting
-                push!(r.args, Expr(:call, :schecktuplelength, t, length(llist.child))) # same TODO: opt: runtime check can sometimes be avoided
-                for i in 1:length(llist.child)
-                    push_assignment!(r, llist.child[i], Expr(:ref, t, i), env)
-                end
-            end
-            return r
+        lhs::Array{AstNode} = AstNode[]
+        rhs::Array{Any} = convert_exprlist(a.child[2], env) # evaluate rhs of assignment first
+        r = Expr(:block)
+        if left.rule == @RULE_left_value(1)
+            r = convert_declare_ip_variable!(lhs, left.child[1], env)
+        elseif left.rule == @RULE_left_value(2)
+            lhs = left.child[1].child
         else
-            throw(TranspileError("internal error in convert_assign 2"))
+            throw(TranspileError("internal error in convert_assign 1"))
         end
+        if length(lhs) == 1
+            if length(rhs) == 1
+                push_assignment!(r, lhs[1], rhs[1], env)
+            else
+                push_assignment!(r, lhs[1], Expr(:tuple, make_tuple_array_copy(rhs)...), env)
+            end
+        else
+            t = gensym();
+            push!(r.args, Expr(:(=), t, Expr(:tuple, make_tuple_array_copy(rhs)...)))
+            push!(r.args, Expr(:call, :schecktuplelength, t, length(lhs))) # TODO opt: runtime check can sometimes be avoided
+            for i in 1:length(lhs.child)
+                push_assignment!(r, lhs[i], Expr(:ref, t, i), env)
+            end
+        end
+        return r
     else
-        throw(TranspileError("internal error in convert_assign 1"))
+        throw(TranspileError("internal error in convert_assign"))
     end
 end
 
@@ -852,32 +975,92 @@ function convert_command(a::AstNode, env::AstEnv)
 end
 
 
-function convert_declare_ip_variable(a::AstNode, env::AstEnv)
-    @assert 0 < a.rule - @RULE_declare_ip_variable(0) < 100
-    if a.rule == @RULE_declare_ip_variable(5)
-        numrows = convert_expr(a.child[3], env)
-        numcols = convert_expr(a.child[4], env)
-        t::AstNode = a.child[1]
-        m::AstNode = a.child[2]
-        s::String = ""
-        if m.rule == @RULE_elemexpr(2) && m.child[1].rule == @RULE_extendedid(1)
-            s = m.child[1].child[1]
-        else
-            throw(TranspileError("internal error in convert_declare_ip_variable"))
-        end
-        !haskey(env.locals, s) || throw("redeclaration of variable")
-        if t.rule == @RULE_mat_cmd(3)
-            env.locals[s] = BigIntMat
-            return Expr(:(=), Symbol(s), coerce_for_assignment(Expr(:call, :zeros, :BigInt, numrows, numcols), BigIntMat))
-        elseif t.rule == @RULE_mat_cmd(2)
-            env.locals[s] = IntMat
-            return Expr(:(=), Symbol(s), Expr(:call, :zeros, :Int, numrows, numcols))
-        else
-            throw(TranspileError("internal error in convert_declare_ip_variable"))
-        end
+function prepend_declared_var!(vars::Array{AstNode}, m::AstNode)
+    (m.rule == @RULE_elemexpr(2) && m.child[1].rule == @RULE_extendedid(1)) || throw(TranspileError("declaration expects identifer name"))
+    pushfirst!(vars, m)
+end
+
+
+function add_local_var!(env::AstEnv, s::String, typ::Any)
+    if haskey(env.locals, s)
+        throw(TranspileError("redeclaration of " * stype_string(env.locals[s]) * " " * s * " as " * stype_string(typ)))
     else
-        throw(TranspileError("internal error in convert_declare_ip_variable"))
-    end    
+        env.locals[s] = typ
+    end
+end
+
+
+# return is always a block
+function convert_declare_ip_variable!(vars::Array{AstNode}, a::AstNode, env::AstEnv)
+    while true
+        @assert 0 < a.rule - @RULE_declare_ip_variable(0) < 100
+        if a.rule == @RULE_declare_ip_variable(1) || a.rule == @RULE_declare_ip_variable(2)
+            tcode::Int = a.child[1]
+            prepend_declared_var!(vars, a.child[2])
+            r = Expr(:block)
+            if tcode == 419
+                for m in vars
+                    s::String = m.child[1].child[1]
+                    add_local_var!(env, s, Int)
+                    push!(r.args, Expr(:(=), Symbol(s), coerce_for_assign(Int, 0)))
+                end
+            elseif tcode == 361
+                for m in vars
+                    s::String = m.child[1].child[1]
+                    add_local_var!(env, s, BigInt)
+                    push!(r.args, Expr(:(=), Symbol(s), coerce_for_assign(BigInt, 0)))
+                end
+            elseif tcode == 508
+                for m in vars
+                    s::String = m.child[1].child[1]
+                    add_local_var!(env, s, NiString)
+                    push!(r.args, Expr(:(=), Symbol(s), coerce_for_assign(NiString, NiString(""))))
+                end
+            elseif tcode == 424
+                for m in vars
+                    s::String = m.child[1].child[1]
+                    add_local_var!(env, s, IntVec)
+                    push!(r.args, Expr(:(=), Symbol(s), coerce_for_assign(IntVec, IntVec(Int[0]))))
+                end
+            else
+                throw(TranspileError("internal error in convert_declare_ip_variable 1"))
+            end   
+            return r
+        elseif a.rule == @RULE_declare_ip_variable(5) || a.rule == @RULE_declare_ip_variable(6)
+            if a.rule == @RULE_declare_ip_variable(5)
+                numrows = Expr(:call, :convert2int, convert_expr(a.child[3], env))
+                numcols = Expr(:call, :convert2int, convert_expr(a.child[4], env))
+            else
+                numrows = numcols = 1 # default matrix size is 1x1
+            end
+            prepend_declared_var!(vars, a.child[2])
+            t::AstNode = a.child[1]
+            r = Expr(:block)
+            if t.rule == @RULE_mat_cmd(2)
+                for m in vars
+                    s::String = m.child[1].child[1]
+                    add_local_var!(env, s, IntMat)
+                    push(r.args, Expr(:(=), Symbol(s), coerce_for_assign(IntMat, Expr(:call, :zeros, :Int, numrows, numcols))))
+                    numrows = numcols = 1 # the rest of the matrices are 1x1 :(
+                end
+            elseif t.rule == @RULE_mat_cmd(3)
+                for m in vars
+                    s::String = m.child[1].child[1]
+                    add_local!(env, s, BigIntMat)
+                    push(r.args, Expr(:(=), Symbol(s), coerce_for_assign(BigIntMat, Expr(:call, :zeros, :BigInt, numrows, numcols))))
+                    numrows = numcols = 1 # the rest of the matrices are 1x1 :(
+                end
+            else
+                throw(TranspileError("internal error in convert_declare_ip_variable 5"))
+            end
+            return r
+        elseif a.rule == @RULE_declare_ip_variable(7)
+            prepend_declared_var!(vars, a.child[2])
+            a = a.child[1]
+        else
+            throw(TranspileError("internal error in convert_declare_ip_variable"))
+        end
+    end
 end
 
 
@@ -886,13 +1069,14 @@ function convert_pprompt(a::AstNode, env::AstEnv)
     if a.rule == @RULE_pprompt(2)
         return convert_command(a.child[1], env)
     elseif a.rule == @RULE_pprompt(3)
-        return convert_declare_ip_variable(a.child[1], env)
+        vars = AstNode[] # unused
+        return convert_declare_ip_variable!(vars, a.child[1], env)
     elseif a.rule == @RULE_pprompt(4)
         return convert_returncmd(a.child[1], env)
     elseif a.rule == @RULE_pprompt(6)
         return :nothing
     else
-        throw(TranspileError("internal error in convert_pprompt " * string(a.rule)))
+        throw(TranspileError("internal error in convert_pprompt "))
     end
 end
 
@@ -931,7 +1115,7 @@ function convert_procargs!(arglist::Vector{Symbol}, body::Expr, a::AstNode, env:
                 throw(TranspileError("unknown argument type"))
             end
             push!(arglist, Symbol(s))
-            push!(body.args, Expr(:(=), Symbol(s), coerce_for_assignment(Symbol(s), env.locals[s])))
+            push!(body.args, Expr(:(=), Symbol(s), coerce_for_assign(env.locals[s], Symbol(s))))
         else
             throw(TranspileError("internal error in convert_procargs"))
         end

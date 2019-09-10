@@ -51,7 +51,7 @@ static char * dupyytextNL()
 
 struct token_lookup_entry {
     const char * name;
-    int tokval;
+    int tokval; // lvalp->i
     int toktype;
 };
 
@@ -62,6 +62,7 @@ static struct token_lookup_entry token_lookup[] = {
 {"intmat",          270, 270},
 {"intvec",          424, ROOT_DECL_LIST},
 {"list",            441, ROOT_DECL_LIST},
+{"string",          508, ROOT_DECL_LIST},
 };
 
 
