@@ -707,6 +707,7 @@ static struct token_lookup_entry token_lookup[] = {
 {"intmat",          270, 270},
 {"intvec",          424, ROOT_DECL_LIST},
 {"list",            441, ROOT_DECL_LIST},
+{"print",           478, CMD_12},
 {"string",          508, ROOT_DECL_LIST},
 };
 
@@ -728,7 +729,7 @@ static struct token_lookup_entry token_lookup[] = {
 
 
 
-#line 732 "lex.yy.c"
+#line 733 "lex.yy.c"
 
 #define INITIAL 0
 #define string 1
@@ -954,9 +955,9 @@ YY_DECL
 		}
 
 	{
-#line 100 "scanner.l"
+#line 101 "scanner.l"
 
-#line 960 "lex.yy.c"
+#line 961 "lex.yy.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -1018,18 +1019,18 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 101 "scanner.l"
+#line 102 "scanner.l"
 
 	YY_BREAK
 case 2:
 /* rule 2 can match eol */
 YY_RULE_SETUP
-#line 102 "scanner.l"
+#line 103 "scanner.l"
 
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 103 "scanner.l"
+#line 104 "scanner.l"
 {
                             while (1) {
                                 int c;
@@ -1045,35 +1046,35 @@ YY_RULE_SETUP
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 116 "scanner.l"
+#line 117 "scanner.l"
 {
                             return IF_CMD;
                         }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 119 "scanner.l"
+#line 120 "scanner.l"
 {
                             return ELSE_CMD;
                         }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 122 "scanner.l"
+#line 123 "scanner.l"
 {
                             return WHILE_CMD;
                         }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 125 "scanner.l"
+#line 126 "scanner.l"
 {
                             return FOR_CMD;
                         }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 128 "scanner.l"
+#line 129 "scanner.l"
 {
                             return RETURN;
                         }
@@ -1081,7 +1082,7 @@ YY_RULE_SETUP
 case 9:
 /* rule 9 can match eol */
 YY_RULE_SETUP
-#line 132 "scanner.l"
+#line 133 "scanner.l"
 {
                            BEGIN(asstring);
                            return HELP_CMD;
@@ -1090,7 +1091,7 @@ YY_RULE_SETUP
 case 10:
 /* rule 10 can match eol */
 YY_RULE_SETUP
-#line 137 "scanner.l"
+#line 138 "scanner.l"
 {
                            BEGIN(asstring);
                            return EXAMPLE_CMD;
@@ -1098,7 +1099,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 142 "scanner.l"
+#line 143 "scanner.l"
 {
                            lvalp->name = dupyytext();
 //printf("returning PROC_DEF\n");
@@ -1107,7 +1108,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 147 "scanner.l"
+#line 148 "scanner.l"
 {
                            lvalp->name = dupyytext();
                            BEGIN(INITIAL);
@@ -1116,7 +1117,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 152 "scanner.l"
+#line 153 "scanner.l"
 {
                            BEGIN(INITIAL);
                            return *yytext;
@@ -1124,7 +1125,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 157 "scanner.l"
+#line 158 "scanner.l"
 {
                            BEGIN(bracestr);
                            yymore();
@@ -1132,18 +1133,18 @@ YY_RULE_SETUP
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 161 "scanner.l"
+#line 162 "scanner.l"
 { if (blocknest++) yymore(); }
 	YY_BREAK
 case 16:
 /* rule 16 can match eol */
 YY_RULE_SETUP
-#line 162 "scanner.l"
+#line 163 "scanner.l"
 { if (blocknest) yymore(); }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 163 "scanner.l"
+#line 164 "scanner.l"
 {
                            if (blocknest)
                            {
@@ -1154,7 +1155,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 170 "scanner.l"
+#line 171 "scanner.l"
 {
                            if (--blocknest <= 0)
                            {
@@ -1167,7 +1168,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 179 "scanner.l"
+#line 180 "scanner.l"
 {
                            BEGIN(brace);
                            yymore();
@@ -1176,19 +1177,19 @@ YY_RULE_SETUP
 case 20:
 /* rule 20 can match eol */
 YY_RULE_SETUP
-#line 183 "scanner.l"
+#line 184 "scanner.l"
 { yymore(); }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 184 "scanner.l"
+#line 185 "scanner.l"
 {
                             return '(';
                           }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 187 "scanner.l"
+#line 188 "scanner.l"
 {
                             return ','; 
                          }
@@ -1196,12 +1197,12 @@ YY_RULE_SETUP
 case 23:
 /* rule 23 can match eol */
 YY_RULE_SETUP
-#line 190 "scanner.l"
+#line 191 "scanner.l"
 { ; }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 191 "scanner.l"
+#line 192 "scanner.l"
 {
                            lvalp->name = dupyytext();
                            return STRINGTOK;
@@ -1210,7 +1211,7 @@ YY_RULE_SETUP
 case 25:
 /* rule 25 can match eol */
 YY_RULE_SETUP
-#line 195 "scanner.l"
+#line 196 "scanner.l"
 {
                            lvalp->name = dupyytext();
                            return STRINGTOK;
@@ -1218,7 +1219,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 199 "scanner.l"
+#line 200 "scanner.l"
 {
                            BEGIN(INITIAL);
                            return ')';
@@ -1226,7 +1227,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 204 "scanner.l"
+#line 205 "scanner.l"
 {
                            BEGIN(INITIAL);
                            return '{';
@@ -1234,7 +1235,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 208 "scanner.l"
+#line 209 "scanner.l"
 {
                            BEGIN(INITIAL);
                            return '}';
@@ -1242,33 +1243,33 @@ YY_RULE_SETUP
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 212 "scanner.l"
+#line 213 "scanner.l"
 { BEGIN(string);}
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 213 "scanner.l"
+#line 214 "scanner.l"
 { return SYS_BREAK; }
 	YY_BREAK
 case 31:
 /* rule 31 can match eol */
 YY_RULE_SETUP
-#line 214 "scanner.l"
+#line 215 "scanner.l"
 { yymore(); }
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 215 "scanner.l"
+#line 216 "scanner.l"
 { yymore(); }
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 216 "scanner.l"
+#line 217 "scanner.l"
 { yymore(); }
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 217 "scanner.l"
+#line 218 "scanner.l"
 {
                            char * s;
                            BEGIN(INITIAL);
@@ -1285,87 +1286,87 @@ YY_RULE_SETUP
 case 35:
 /* rule 35 can match eol */
 YY_RULE_SETUP
-#line 230 "scanner.l"
+#line 231 "scanner.l"
 /* skip whitespace */
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 231 "scanner.l"
+#line 232 "scanner.l"
 { return DOTDOT; }
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 232 "scanner.l"
+#line 233 "scanner.l"
 { return COLONCOLON; }
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 233 "scanner.l"
+#line 234 "scanner.l"
 { return MINUSMINUS; }
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 234 "scanner.l"
+#line 235 "scanner.l"
 { return PLUSPLUS  ; }
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 235 "scanner.l"
+#line 236 "scanner.l"
 { return EQUAL_EQUAL; }
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 236 "scanner.l"
+#line 237 "scanner.l"
 { lvalp->i='&'; return LOGIC_OP; }
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 237 "scanner.l"
+#line 238 "scanner.l"
 { lvalp->i='|'; return LOGIC_OP; }
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 238 "scanner.l"
+#line 239 "scanner.l"
 { lvalp->i=LE; return COMP_OP; }
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 239 "scanner.l"
+#line 240 "scanner.l"
 { lvalp->i=GE; return COMP_OP; }
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 240 "scanner.l"
+#line 241 "scanner.l"
 { return NOT; }
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 241 "scanner.l"
+#line 242 "scanner.l"
 { return NOTEQUAL; }
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 242 "scanner.l"
+#line 243 "scanner.l"
 { return NOTEQUAL; }
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 243 "scanner.l"
+#line 244 "scanner.l"
 { return '^'; }
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 244 "scanner.l"
+#line 245 "scanner.l"
 { return ARROW; }
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 245 "scanner.l"
+#line 246 "scanner.l"
 { return '\\'; }
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 246 "scanner.l"
+#line 247 "scanner.l"
 {
                            lvalp->name = dupyytext();
                            return STRINGTOK;
@@ -1373,7 +1374,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 250 "scanner.l"
+#line 251 "scanner.l"
 {
                            lvalp->name = dupyytext();
                            return INT_CONST;
@@ -1381,7 +1382,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 254 "scanner.l"
+#line 255 "scanner.l"
 {
                            lvalp->name = dupyytext();
                            return RINGVAR;
@@ -1389,7 +1390,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 258 "scanner.l"
+#line 259 "scanner.l"
 {
                            lvalp->name = dupyytext();
                            return INT_CONST;
@@ -1398,7 +1399,7 @@ YY_RULE_SETUP
 case 55:
 /* rule 55 can match eol */
 YY_RULE_SETUP
-#line 262 "scanner.l"
+#line 263 "scanner.l"
 {
                            printf("quit\n");
                            lvalp->name = dupyytext();
@@ -1407,7 +1408,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 268 "scanner.l"
+#line 269 "scanner.l"
 {
                            lvalp->name = dupyytext();
                            return RINGVAR;
@@ -1415,7 +1416,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 272 "scanner.l"
+#line 273 "scanner.l"
 {
                            lvalp->name = dupyytext();
                            return RINGVAR;
@@ -1428,7 +1429,7 @@ YY_LINENO_REWIND_TO(yy_cp - 1);
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 276 "scanner.l"
+#line 277 "scanner.l"
 {
                            lvalp->name = dupyytext();
                            return RINGVAR;
@@ -1436,7 +1437,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 59:
 YY_RULE_SETUP
-#line 281 "scanner.l"
+#line 282 "scanner.l"
 {
                            /* {name} */
 
@@ -1466,7 +1467,7 @@ printf("SCANNER %s RETURNING %d (UNKNOWN_IDENT)\n", (char *)yytext, UNKNOWN_IDEN
 	YY_BREAK
 case 60:
 YY_RULE_SETUP
-#line 308 "scanner.l"
+#line 309 "scanner.l"
 {
                            /*if (*yytext == '\n') REJECT;*/
                            char ch= *yytext;
@@ -1491,10 +1492,10 @@ YY_RULE_SETUP
 	YY_BREAK
 case 61:
 YY_RULE_SETUP
-#line 329 "scanner.l"
+#line 330 "scanner.l"
 YY_FATAL_ERROR( "flex scanner jammed" );
 	YY_BREAK
-#line 1498 "lex.yy.c"
+#line 1499 "lex.yy.c"
 case YY_STATE_EOF(INITIAL):
 case YY_STATE_EOF(string):
 case YY_STATE_EOF(brace):
@@ -2504,7 +2505,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 329 "scanner.l"
+#line 330 "scanner.l"
 
 
 

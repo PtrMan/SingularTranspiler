@@ -62,6 +62,7 @@ static struct token_lookup_entry token_lookup[] = {
 {"intmat",          270, 270},
 {"intvec",          424, ROOT_DECL_LIST},
 {"list",            441, ROOT_DECL_LIST},
+{"print",           478, CMD_12},
 {"string",          508, ROOT_DECL_LIST},
 };
 

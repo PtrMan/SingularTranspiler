@@ -1,10 +1,9 @@
 proc f(int m, int n)
 {
-    intvec v = 1, 2, 3;
-    v = 0, v, 4;
-    v = -1, v, -1, v, -1;
-    int u = v[1];
-    return(v + u);
+    bigintmat A[m][n];
+    A = 1, m, n, m + n, m*n;
+    A[m, n] = m^n;
+    return(2*A);
 };
 
-
+f(3, 4);
