@@ -3,6 +3,10 @@ struct Unknown
     name::String
 end
 
+struct Proc
+    name::Symbol
+end
+
 # Int same
 
 # BigInt same
@@ -44,14 +48,14 @@ end
 
 
 
-const SingularType = Union{Int, BigInt, NiString, IntVec, IntMat, BigIntMat, List}
+const SingularType = Union{Unknown, Proc, Int, BigInt, NiString, IntVec, IntMat, BigIntMat, List}
 
 const _IntVec    = Union{IntVec, Vector{Int}}
 const _IntMat    = Union{IntMat, Array{Int, 2}}
 const _BigIntMat = Union{BigIntMat, Array{BigInt, 2}}
 const _List      = Union{List, ListData}
 
-const _SingularType = Union{Int, BigInt, NiString, IntVec, IntMat, BigIntMat, List, Vector{Int}, Array{Int, 2}, Array{BigInt, 2}, ListData}
+const _SingularType = Union{Unknown, Proc, Int, BigInt, NiString, IntVec, IntMat, BigIntMat, List, Vector{Int}, Array{Int, 2}, Array{BigInt, 2}, ListData}
 
 
 function Base.deepcopy_internal(a::IntVec, dict::IdDict)
@@ -134,6 +138,20 @@ sref(a::List) = a.list
 
 ########### type conversions ##################################################
 # each conversion returns an object of the corresponding type
+
+#singular maintains bools as ints, julia needs real bools for control flow
+
+function sasbool(a::Int)
+    return a != 0
+end
+
+function sasbool(a::BigInt)
+    return a != 0
+end
+
+function sasbool(a)
+    return false
+end
 
 ################### int ########################
 
@@ -316,11 +334,20 @@ function sconvert2list(a::Tuple{Vararg{SingularType}})
 end
 
 function sconvert2list(a)
-    
+    error("cannot convert to list")
+    return List(ListData(Any[]))
 end
 
 
 ############ printing ##########################################################
+
+function _sindenting_print(a::Unknown, indent::Int)
+    return " "^indent * "UNKNOWN IDENTIFIER " * a.name
+end
+
+function _sindenting_print(a::Unknown, indent::Int)
+    return " "^indent * "procname: " * string(a.name)
+end
 
 function _sindenting_print(a::Union{Int, BigInt}, indent::Int)
     return " "^indent * string(a)
@@ -373,6 +400,11 @@ end
 
 function sprint(a::Tuple{Vararg{SingularType}})
     return NiString(_sindenting_print(a, 0))
+end
+
+
+function _sprintout(::Nothing)
+    return
 end
 
 function _sprintout(a::_SingularType)
@@ -510,7 +542,7 @@ end
 
 ################ tuples ########################################################
 #
-# all splatting is done a transpile time
+# all splatting is done at transpile time
 #function smaketuple(v...)
 #    g = (x isa Tuple ? x : (x,) for x in v)
 #    r = tuple(Iterators.flatten(g)...)
@@ -609,6 +641,47 @@ spower(a::Int, b::BigInt) = a ^ b
 spower(a::BigInt, b::Int) = a ^ b
 spower(a::BigInt, b::BigInt) = a ^ b
 
+sinc(a::Int) = a + 1
+sinc(a::BigInt) = a + 1
+
+function sinc(a)
+    error("cannot increment")
+end
+
+sdec(a::Int) = b + 1
+sdec(a::BigInt) = b + 1
+
+function sdec(a)
+    error("cannot decrement")
+end
+
+
+sequalequal(a::Int, b::Int) = a == b
+sequalequal(a::Int, b::BigInt) = a == b
+sequalequal(a::BigInt, b::Int) = a == b
+sequalequal(a::BigInt, b::BigInt) = a == b
+
+sless(a::Int, b::Int) = Int(a < b)
+sless(a::Int, b::BigInt) = Int(a < b)
+sless(a::BigInt, b::Int) = Int(a < b)
+sless(a::BigInt, b::BigInt) = Int(a < b)
+
+slessequal(a::Int, b::Int) = Int(a <= b)
+slessequal(a::Int, b::BigInt) = Int(a <= b)
+slessequal(a::BigInt, b::Int) = Int(a <= b)
+slessequal(a::BigInt, b::BigInt) = Int(a <= b)
+
+sgreater(a::Int, b::Int) = Int(a > b)
+sgreater(a::Int, b::BigInt) = Int(a > b)
+sgreater(a::BigInt, b::Int) = Int(a > b)
+sgreater(a::BigInt, b::BigInt) = Int(a > b)
+
+sgreaterequal(a::Int, b::Int) = Int(a >= b)
+sgreaterequal(a::Int, b::BigInt) = Int(a >= b)
+sgreaterequal(a::BigInt, b::Int) = Int(a >= b)
+sgreaterequal(a::BigInt, b::BigInt) = Int(a >= b)
+
+
 
 ###############################################################################
 
@@ -629,6 +702,12 @@ mutable struct AstEnv
     type::Int
     locals::Dict{String, Any}
 end
+
+mutable struct GlbEnv
+    global_types::Dict{String, Any}
+end
+
+sGlobalEnvironment = GlbEnv(Dict{String, Any}())
 
 Base.showerror(io::IO, er::TranspileError) = print(io, "transpilation error: ", er.name)
 
@@ -883,7 +962,18 @@ end
 
 function convert_expr_arithmetic(a::AstNode, env::AstEnv)
     @assert 0 < a.rule - @RULE_expr_arithmetic(0) < 100
-    if a.rule == @RULE_expr_arithmetic(3)
+    if a.rule == @RULE_expr_arithmetic(1)
+        #let's NOT support (a,b)++ for now
+        r = Expr(:block)
+        push_assignment!(r, a.child[1], Expr(:call, :sinc, convert_expr(a.child[1], env)), env)
+        push!(r.args, :nothing)
+        return r
+    elseif a.rule == @RULE_expr_arithmetic(2)
+        r = Expr(:block)
+        push_assignment!(r, a.child[1], Expr(:call, :sdec, convert_expr(a.child[1], env)), env)
+        push!(r.args, :nothing)
+        return r
+    elseif a.rule == @RULE_expr_arithmetic(3)
         return Expr(:call, :splus, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
     elseif a.rule == @RULE_expr_arithmetic(4)
         return Expr(:call, :sminus, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
@@ -895,7 +985,29 @@ function convert_expr_arithmetic(a::AstNode, env::AstEnv)
         return Expr(:call, :sdivide, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
     elseif a.rule == @RULE_expr_arithmetic(8)
         return Expr(:call, :spower, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
+    elseif a.rule == @RULE_expr_arithmetic(9)
+        return Expr(:call, :sgreaterequal, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
+    elseif a.rule == @RULE_expr_arithmetic(10)
+        return Expr(:call, :slessequal, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
+    elseif a.rule == @RULE_expr_arithmetic(11)
+        return Expr(:call, :sgreater, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
+    elseif a.rule == @RULE_expr_arithmetic(12)
+        return Expr(:call, :sless, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
+    elseif a.rule == @RULE_expr_arithmetic(13)
+        return Expr(:call, :sand, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
+    elseif a.rule == @RULE_expr_arithmetic(14)
+        return Expr(:call, :sor, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
+    elseif a.rule == @RULE_expr_arithmetic(15)
+        return Expr(:call, :snotequal, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
+    elseif a.rule == @RULE_expr_arithmetic(16)
+        return Expr(:call, :sequalequal, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
+    elseif a.rule == @RULE_expr_arithmetic(17)
+        return Expr(:call, :sdotdot, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
     elseif a.rule == @RULE_expr_arithmetic(18)
+        return Expr(:call, :scolon, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
+    elseif a.rule == @RULE_expr_arithmetic(19)
+        return Expr(:call, :snot, convert_expr(a.child[1], env))
+    elseif a.rule == @RULE_expr_arithmetic(20)
         return Expr(:call, :sminus, convert_expr(a.child[1], env))
     else
         throw(TranspileError("internal error in convert_expr_arithmetic "))
@@ -938,7 +1050,7 @@ function convert_returncmd(a::AstNode, env::AstEnv)
             return Expr(:return, Expr(:tuple, make_tuple_array_copy(b)...))
         end
     elseif a.rule == @RULE_returncmd(2)
-        return Expr(:return)
+        return Expr(:return, :nothing)
     else
         throw(TranspileError("internal error in convert_returncmd"))
     end
@@ -1056,7 +1168,11 @@ function convert_typecmd(a::AstNode, env::AstEnv)
         push!(t.args, Expr(:call, :_sprintouttype, b))
     elseif a.rule == @RULE_typecmd(2)
         for b in convert_exprlist(a.child[1], env)
-            push!(t.args, Expr(:call, :_sprintout, b))
+            if b isa Expr && b.head == :block && length(b.args) > 0 && b.args[length(b.args)] == :nothing
+                push!(t.args, b)
+            else
+                push!(t.args, Expr(:call, :_sprintout, b))
+            end
         end
     else
         throw(TranspileError("internal error in convert_typecmd"))
@@ -1166,41 +1282,101 @@ function convert_declare_ip_variable!(vars::Array{AstNode}, a::AstNode, env::Ast
 end
 
 
-function convert_pprompt(a::AstNode, env::AstEnv)
-    @assert 0 < a.rule - @RULE_pprompt(0) < 100
-    if a.rule == @RULE_pprompt(2)
-        return convert_command(a.child[1], env)
-    elseif a.rule == @RULE_pprompt(3)
-        vars = AstNode[] # unused
-        return convert_declare_ip_variable!(vars, a.child[1], env)
-    elseif a.rule == @RULE_pprompt(4)
-        return convert_returncmd(a.child[1], env)
-    elseif a.rule == @RULE_pprompt(6)
-        return :nothing
-    else
-        throw(TranspileError("internal error in convert_pprompt "))
-    end
-end
-
-
 function join_blocks!(a::Expr, b::Expr)
-    for i in 1:length(b.args)
-        push!(a.args, b.args[i])
-    end
-end
-
-# return is always a block
-function convert_lines(a::AstNode, env::AstEnv)
-    t = Expr(:block)
-    for i = 1:length(a.child)
-        b = convert_pprompt(a.child[i], env)
-        if b isa Expr && b.head == :block
-            join_blocks!(t, b)
-        elseif b != :nothing
-            push!(t.args, b)
+    for c in b.args
+        if c isa Expr && c.head == :block
+            join_blocks!(a, c)
+        elseif c != :nothing
+            push!(a.args, c)
         end
     end
-    return t
+end
+
+
+function block_append!(t::Expr, b)
+    if b isa Expr && b.head == :block
+        join_blocks!(t, b)
+    elseif b != :nothing
+        push!(t.args, b)
+    end
+end
+
+
+function convert_ifcmd(a::AstNode, env::AstEnv)
+    @assert 0 < a.rule - @RULE_ifcmd(0) < 100
+    if a.rule == @RULE_ifcmd(1)
+        return Expr(:if, Expr(:call, :sasbool, convert_expr(a.child[1], env)),
+                         convert_lines(a.child[2], env))
+    elseif a.rule == @RULE_ifcmd(2)
+        throw(TranspileError("else without if"))
+    else
+        throw(TranspileError("internal error in convert_ifcmd"))
+    end
+end
+
+function convert_whilecmd(a::AstNode, env::AstEnv)
+    @assert 0 < a.rule - @RULE_whilecmd(0) < 100
+    if a.rule == @RULE_whilecmd(1)
+        test = convert_expr(a.child[1], env)
+        return Expr(:while, Expr(:call, :sasbool, test), convert_lines(a.child[2], env))
+    else
+        throw(TranspileError("internal error in convert_whilecmd"))
+    end
+end
+
+function convert_forcmd(a::AstNode, env::AstEnv)
+    @assert 0 < a.rule - @RULE_forcmd(0) < 100
+    if a.rule == @RULE_forcmd(1)
+        r = Expr(:block)
+        body = Expr(:block)
+        init = convert_npprompt(a.child[1], env)
+        test = convert_expr(a.child[2], env)
+        block_append!(r, init)
+        block_append!(body, convert_lines(a.child[4], env))
+        block_append!(body, convert_npprompt(a.child[3], env))
+        push!(r.args, Expr(:while, Expr(:call, :sasbool, test), body))
+        return r
+    else
+        throw(TranspileError("internal error in convert_whilecmd"))
+    end
+end
+
+
+#return false, 0 or true, ifexpr
+function find_if_else(a::AstNode, i::Int, env::AstEnv)
+    if i >= length(a.child)
+        return false, 0
+    end
+
+    b = a.child[i]
+    if b.rule != @RULE_pprompt(1)
+        return false, 0
+    end
+    b = b.child[1]
+    if b.rule != @RULE_flowctrl(1)
+        return false, 0
+    end
+    b = b.child[1]
+    if b.rule != @RULE_ifcmd(1)
+        return false, 0
+    end
+
+    c = a.child[i + 1]
+    if c.rule != @RULE_pprompt(1)
+        return false, 0
+    end
+    c = c.child[1]
+    if c.rule != @RULE_flowctrl(1)
+        return false, 0
+    end
+    c = c.child[1]
+    if c.rule != @RULE_ifcmd(2)
+        return false, 0
+    end
+
+    return true, Expr(:if, Expr(:call, :sasbool, convert_expr(b.child[1], env)),
+                           convert_lines(b.child[2], env),
+                           convert_lines(c.child[1], env))
 end
 
 #push to arg list, and push to arginit
@@ -1251,11 +1427,53 @@ end
 
 function convert_flowctrl(a::AstNode, env::AstEnv)
     @assert 0 < a.rule - @RULE_flowctrl(0) < 100
-    if a.rule == @RULE_flowctrl(5)
+    if a.rule == @RULE_flowctrl(1)
+        return convert_ifcmd(a.child[1], env)
+    elseif a.rule == @RULE_flowctrl(2)
+        return convert_whilecmd(a.child[1], env)
+    elseif a.rule == @RULE_flowctrl(4)
+        return convert_forcmd(a.child[1], env)
+    elseif a.rule == @RULE_flowctrl(5)
         return convert_proccmd(a.child[1], env)
     else
         throw(TranspileError("internal error in convert_flowctrl"))
-    end    
+    end
+end
+
+
+function convert_pprompt(a::AstNode, env::AstEnv)
+    @assert 0 < a.rule - @RULE_pprompt(0) < 100
+    if a.rule == @RULE_pprompt(1)
+        return convert_flowctrl(a.child[1], env)
+    elseif a.rule == @RULE_pprompt(2)
+        return convert_command(a.child[1], env)
+    elseif a.rule == @RULE_pprompt(3)
+        vars = AstNode[] # unused
+        return convert_declare_ip_variable!(vars, a.child[1], env)
+    elseif a.rule == @RULE_pprompt(4)
+        return convert_returncmd(a.child[1], env)
+    elseif a.rule == @RULE_pprompt(6)
+        return :nothing
+    else
+        throw(TranspileError("internal error in convert_pprompt"))
+    end
+end
+
+
+function convert_npprompt(a::AstNode, env::AstEnv)
+    @assert 0 < a.rule - @RULE_npprompt(0) < 100
+    if a.rule == @RULE_npprompt(1)
+        return convert_flowctrl(a.child[1], env)
+    elseif a.rule == @RULE_npprompt(2)
+        return convert_command(a.child[1], env)
+    elseif a.rule == @RULE_npprompt(3)
+        vars = AstNode[] # unused
+        return convert_declare_ip_variable!(vars, a.child[1], env)
+    elseif a.rule == @RULE_npprompt(4)
+        return convert_returncmd(a.child[1], env)
+    else
+        throw(TranspileError("internal error in convert_pprompt"))
+    end
 end
 
 
@@ -1265,6 +1483,9 @@ function convert_top_pprompt(a::AstNode, env::AstEnv)
         return convert_flowctrl(a.child[1], env)
     elseif a.rule == @RULE_top_pprompt(2)
         return convert_command(a.child[1], env)
+    elseif a.rule == @RULE_top_pprompt(3)
+        vars = AstNode[] # unused
+        return convert_declare_ip_variable!(vars, a.child[1], env)
     elseif a.rule == @RULE_top_pprompt(5)
         return :nothing
     elseif a.rule == @RULE_top_pprompt(5)
@@ -1274,16 +1495,38 @@ function convert_top_pprompt(a::AstNode, env::AstEnv)
     end
 end
 
-
-function convert_top(a::AstNode, env::AstEnv)
-    t = Expr(:toplevel)
-    for i = 1:length(a.child)
-        b = convert_top_pprompt(a.child[i], env)
-        if b isa Expr && b.head == :block
-            join_blocks!(t, b)
-        elseif b != :nothing
-            push!(t.args, b)
+# return is always a block
+function convert_lines(a::AstNode, env::AstEnv)
+    @assert 0 < a.rule - @RULE_lines(0) < 100
+    t = Expr(:block)
+    i = 1
+    while i <= length(a.child)
+        have_if_else, b = find_if_else(a, i, env)
+        if have_if_else
+            i += 1
+        else
+            b = convert_pprompt(a.child[i], env)
         end
+        block_append!(t, b)
+        i += 1
+    end
+    return t
+end
+
+
+# return is always a toplevel
+function convert_toplines(a::AstNode, env::AstEnv)
+    t = Expr(:toplevel)
+    i = 1
+    while i <= length(a.child)
+        have_if_else, b = find_if_else(a, i, env)
+        if have_if_else
+            i += 1
+        else
+            b = convert_top_pprompt(a.child[i], env)
+        end
+        block_append!(t, b)
+        i += 1
     end
     return t
 end
@@ -1300,7 +1543,7 @@ function singrun(fs::String)
 
     t0 = time()
 #    try
-        expr = convert_top(ast, env)
+        expr = convert_toplines(ast, env)
         t1 = time()
         println("elapsed time: ", t1-t0, " seconds")
         println("expr:"); dump(expr, maxdepth=100)

@@ -1,9 +1,9 @@
-proc f(int m, int n)
+proc f(int n)
 {
-    bigintmat A[m][n];
-    A = 1, m, n, m + n, m*n;
-    A[m, n] = m^n;
-    return(2*A);
+    for (int i = 1; i <= n; i++)
+    {
+        i;
+    }
 };
 
-f(3, 4);
+f(5);

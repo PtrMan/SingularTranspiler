@@ -544,16 +544,16 @@ static const yytype_uint16 yyrline[] =
      701,   708,   715,   722,   729,   736,   743,   750,   757,   764,
      771,   780,   787,   795,   802,   809,   816,   823,   830,   837,
      844,   851,   858,   865,   872,   879,   887,   886,   900,   908,
-     916,   925,   932,   939,   946,   953,   971,   978,   992,  1006,
-    1013,  1020,  1027,  1034,  1041,  1050,  1057,  1067,  1074,  1084,
-    1091,  1098,  1105,  1112,  1119,  1126,  1133,  1142,  1151,  1158,
-    1167,  1176,  1182,  1191,  1198,  1207,  1214,  1222,  1231,  1238,
-    1245,  1258,  1267,  1274,  1283,  1292,  1301,  1308,  1317,  1324,
-    1331,  1338,  1345,  1352,  1359,  1366,  1373,  1380,  1387,  1394,
-    1401,  1408,  1415,  1422,  1431,  1440,  1451,  1458,  1465,  1474,
-    1483,  1489,  1498,  1507,  1514,  1526,  1533,  1540,  1547,  1554,
-    1563,  1572,  1581,  1588,  1595,  1602,  1611,  1618,  1627,  1634,
-    1643,  1648,  1653,  1658
+     916,   925,   932,   939,   946,   953,   971,   978,  1000,  1014,
+    1021,  1028,  1035,  1042,  1049,  1058,  1065,  1075,  1082,  1092,
+    1099,  1106,  1113,  1120,  1127,  1134,  1141,  1150,  1159,  1166,
+    1175,  1184,  1190,  1199,  1206,  1215,  1222,  1230,  1239,  1246,
+    1253,  1266,  1275,  1282,  1291,  1300,  1309,  1316,  1325,  1332,
+    1339,  1346,  1353,  1360,  1367,  1374,  1381,  1388,  1395,  1402,
+    1409,  1416,  1423,  1430,  1439,  1448,  1459,  1466,  1473,  1482,
+    1491,  1497,  1506,  1515,  1522,  1534,  1541,  1548,  1555,  1562,
+    1571,  1580,  1589,  1596,  1603,  1610,  1619,  1626,  1635,  1642,
+    1651,  1656,  1661,  1666
 };
 #endif
 
@@ -3322,21 +3322,29 @@ yyreduce:
 #line 979 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("expr_arithmetic -> expr '<' expr");
-                if ((yyvsp[-1].i) == '>')
+                if ((yyvsp[-1].i) == GE)
                 {
                     (yyval.tree) = astnode_make2(RULE_expr_arithmetic(9), (yyvsp[-2].tree), (yyvsp[0].tree));
                 }
-                else
+                else if ((yyvsp[-1].i) == LE)
                 {
                     (yyval.tree) = astnode_make2(RULE_expr_arithmetic(10), (yyvsp[-2].tree), (yyvsp[0].tree));
                 }
+                else if ((yyvsp[-1].i) == '>')
+                {
+                    (yyval.tree) = astnode_make2(RULE_expr_arithmetic(11), (yyvsp[-2].tree), (yyvsp[0].tree));
+                }
+                else
+                {
+                    (yyval.tree) = astnode_make2(RULE_expr_arithmetic(12), (yyvsp[-2].tree), (yyvsp[0].tree));
+                }
                 exitrule_ex("expr_arithmetic -> expr '<' expr",(yyval.tree));
             }
-#line 3336 "grammar.tab.c" /* yacc.c:1646  */
+#line 3344 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 108:
-#line 993 "grammar.y" /* yacc.c:1646  */
+#line 1001 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("expr_arithmetic -> expr '&' expr");
                 if ((yyvsp[-1].i) == '&')
@@ -3349,853 +3357,853 @@ yyreduce:
                 }
                 exitrule_ex("expr_arithmetic -> expr '&' expr",(yyval.tree));
             }
-#line 3353 "grammar.tab.c" /* yacc.c:1646  */
+#line 3361 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 109:
-#line 1007 "grammar.y" /* yacc.c:1646  */
+#line 1015 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("expr_arithmetic -> expr NOTEQUAL expr");
                 (yyval.tree) = astnode_make2(RULE_expr_arithmetic(13), (yyvsp[-2].tree), (yyvsp[0].tree));
                 exitrule("expr_arithmetic -> expr NOTEQUAL expr");
             }
-#line 3363 "grammar.tab.c" /* yacc.c:1646  */
+#line 3371 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 110:
-#line 1014 "grammar.y" /* yacc.c:1646  */
+#line 1022 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("expr_arithmetic -> expr EQUAL_EQUAL expr");
                 (yyval.tree) = astnode_make2(RULE_expr_arithmetic(14), (yyvsp[-2].tree), (yyvsp[0].tree));
                 exitrule("expr_arithmetic -> expr EQUAL_EQUAL expr");
             }
-#line 3373 "grammar.tab.c" /* yacc.c:1646  */
+#line 3381 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 111:
-#line 1021 "grammar.y" /* yacc.c:1646  */
+#line 1029 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("expr_arithmetic -> expr DOTDOT expr");
                 (yyval.tree) = astnode_make2(RULE_expr_arithmetic(15), (yyvsp[-2].tree), (yyvsp[0].tree));
                 exitrule("expr_arithmetic -> expr DOTDOT expr");
             }
-#line 3383 "grammar.tab.c" /* yacc.c:1646  */
+#line 3391 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 112:
-#line 1028 "grammar.y" /* yacc.c:1646  */
+#line 1036 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("expr_arithmetic -> expr ':' expr");
                 (yyval.tree) = astnode_make2(RULE_expr_arithmetic(16), (yyvsp[-2].tree), (yyvsp[0].tree));
                 exitrule("expr_arithmetic -> expr ':' expr");
             }
-#line 3393 "grammar.tab.c" /* yacc.c:1646  */
+#line 3401 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 113:
-#line 1035 "grammar.y" /* yacc.c:1646  */
+#line 1043 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("expr_arithmetic -> NOT expr");
                 (yyval.tree) = astnode_make1(RULE_expr_arithmetic(17), (yyvsp[0].tree));
                 exitrule("expr_arithmetic -> NOT expr");
             }
-#line 3403 "grammar.tab.c" /* yacc.c:1646  */
+#line 3411 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 114:
-#line 1042 "grammar.y" /* yacc.c:1646  */
+#line 1050 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("expr_arithmetic -> '-' expr");
                 (yyval.tree) = astnode_make1(RULE_expr_arithmetic(18), (yyvsp[0].tree));
                 exitrule("expr_arithmetic -> '-' expr");
             }
-#line 3413 "grammar.tab.c" /* yacc.c:1646  */
+#line 3421 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 115:
-#line 1051 "grammar.y" /* yacc.c:1646  */
+#line 1059 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("left_value -> declare_ip_variable cmdeq");
                 (yyval.tree) = astnode_make1(RULE_left_value(1), (yyvsp[-1].tree));
                 exitrule_ex("left_value -> declare_ip_variable cmdeq",(yyval.tree));
             }
-#line 3423 "grammar.tab.c" /* yacc.c:1646  */
+#line 3431 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 116:
-#line 1058 "grammar.y" /* yacc.c:1646  */
+#line 1066 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("left_value -> exprlist cmdeq");
                 (yyval.tree) = astnode_make1(RULE_left_value(2), (yyvsp[-1].tree));
                 exitrule("left_value -> exprlist cmdeq");
             }
-#line 3433 "grammar.tab.c" /* yacc.c:1646  */
+#line 3441 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 117:
-#line 1068 "grammar.y" /* yacc.c:1646  */
+#line 1076 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("extendedid -> UNKNOWN_IDENT");
                 (yyval.tree) = astnode_make1(RULE_extendedid(1), aststring_make((yyvsp[0].name)));
                 exitrule_ex("extendedid -> UNKNOWN_IDENT",(yyval.tree));
             }
-#line 3443 "grammar.tab.c" /* yacc.c:1646  */
+#line 3451 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 118:
-#line 1075 "grammar.y" /* yacc.c:1646  */
+#line 1083 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("extendedid -> '`' expr '`'");
                 (yyval.tree) = astnode_make1(RULE_extendedid(2), (yyvsp[-1].tree));
                 exitrule_ex("extendedid -> '`' expr '`'",(yyval.tree));
             }
-#line 3453 "grammar.tab.c" /* yacc.c:1646  */
+#line 3461 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 119:
-#line 1085 "grammar.y" /* yacc.c:1646  */
+#line 1093 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("declare_ip_variable -> ROOT_DECL elemexpr");
                 (yyval.tree) = astnode_make2(RULE_declare_ip_variable(1), astint_make((yyvsp[-1].i)), (yyvsp[0].tree));
                 exitrule_ex("declare_ip_variable -> ROOT_DECL elemexpr",(yyval.tree));
             }
-#line 3463 "grammar.tab.c" /* yacc.c:1646  */
+#line 3471 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 120:
-#line 1092 "grammar.y" /* yacc.c:1646  */
+#line 1100 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("declare_ip_variable -> ROOT_DECL_LIST elemexpr");
                 (yyval.tree) = astnode_make2(RULE_declare_ip_variable(2), astint_make((yyvsp[-1].i)), (yyvsp[0].tree));
                 exitrule("declare_ip_variable -> ROOT_DECL_LIST elemexpr");
             }
-#line 3473 "grammar.tab.c" /* yacc.c:1646  */
+#line 3481 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 121:
-#line 1099 "grammar.y" /* yacc.c:1646  */
+#line 1107 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("declare_ip_variable -> RING_DECL elemexpr");
                 (yyval.tree) = astnode_make2(RULE_declare_ip_variable(3), astint_make((yyvsp[-1].i)), (yyvsp[0].tree));
                 exitrule("declare_ip_variable -> RING_DECL elemexpr");
             }
-#line 3483 "grammar.tab.c" /* yacc.c:1646  */
+#line 3491 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 122:
-#line 1106 "grammar.y" /* yacc.c:1646  */
+#line 1114 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("declare_ip_variable -> RING_DECL_LIST elemexpr");
                 (yyval.tree) = astnode_make2(RULE_declare_ip_variable(4), astint_make((yyvsp[-1].i)), (yyvsp[0].tree));
                 exitrule("declare_ip_variable -> RING_DECL_LIST elemexpr");
             }
-#line 3493 "grammar.tab.c" /* yacc.c:1646  */
+#line 3501 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 123:
-#line 1113 "grammar.y" /* yacc.c:1646  */
+#line 1121 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("declare_ip_variable -> mat_cmd elemexpr '[' expr ']' '[' expr ']'");
                 (yyval.tree) = astnode_make4(RULE_declare_ip_variable(5), (yyvsp[-7].tree), (yyvsp[-6].tree), (yyvsp[-4].tree), (yyvsp[-1].tree));
                 exitrule("declare_ip_variable -> mat_cmd elemexpr '[' expr ']' '[' expr ']'");
             }
-#line 3503 "grammar.tab.c" /* yacc.c:1646  */
+#line 3511 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 124:
-#line 1120 "grammar.y" /* yacc.c:1646  */
+#line 1128 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("declare_ip_variable -> mat_cmd elemexpr");
                 (yyval.tree) = astnode_make2(RULE_declare_ip_variable(6), (yyvsp[-1].tree), (yyvsp[0].tree));
                 exitrule("declare_ip_variable -> mat_cmd elemexpr");
             }
-#line 3513 "grammar.tab.c" /* yacc.c:1646  */
+#line 3521 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 125:
-#line 1127 "grammar.y" /* yacc.c:1646  */
+#line 1135 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("declare_ip_variable -> declare_ip_variable ',' elemexpr");
                 (yyval.tree) = astnode_make2(RULE_declare_ip_variable(7), (yyvsp[-2].tree), (yyvsp[0].tree));
                 exitrule("declare_ip_variable -> declare_ip_variable ',' elemexpr");
             }
-#line 3523 "grammar.tab.c" /* yacc.c:1646  */
+#line 3531 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 126:
-#line 1134 "grammar.y" /* yacc.c:1646  */
+#line 1142 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("declare_ip_variable -> PROC_CMD elemexpr");
                 (yyval.tree) = astnode_make2(RULE_declare_ip_variable(8), astint_make((yyvsp[-1].i)), (yyvsp[0].tree));
                 exitrule("declare_ip_variable -> PROC_CMD elemexpr");
             }
-#line 3533 "grammar.tab.c" /* yacc.c:1646  */
+#line 3541 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 127:
-#line 1143 "grammar.y" /* yacc.c:1646  */
+#line 1151 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("stringexpr -> STRINGTOK");
                 (yyval.tree) = astnode_make1(RULE_stringexpr(1), aststring_make((yyvsp[0].name)));
                 exitrule("stringexpr -> STRINGTOK");
             }
-#line 3543 "grammar.tab.c" /* yacc.c:1646  */
+#line 3551 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 128:
-#line 1152 "grammar.y" /* yacc.c:1646  */
+#line 1160 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("rlist -> expr");
                 (yyval.tree) = astnode_make1(RULE_rlist(1), (yyvsp[0].tree));
                 exitrule("rlist -> expr");
             }
-#line 3553 "grammar.tab.c" /* yacc.c:1646  */
+#line 3561 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 129:
-#line 1159 "grammar.y" /* yacc.c:1646  */
+#line 1167 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("rlist -> '(' expr ',' exprlist ')'");
                 (yyval.tree) = astnode_make2(RULE_rlist(2), (yyvsp[-3].tree), (yyvsp[-1].tree));
                 exitrule("rlist -> '(' expr ',' exprlist ')'");
             }
-#line 3563 "grammar.tab.c" /* yacc.c:1646  */
+#line 3571 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 130:
-#line 1168 "grammar.y" /* yacc.c:1646  */
+#line 1176 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("ordername -> UNKNOWN_IDENT");
                 (yyval.tree) = astnode_make1(RULE_ordername(1), aststring_make((yyvsp[0].name)));
                 exitrule("ordername -> UNKNOWN_IDENT");
             }
-#line 3573 "grammar.tab.c" /* yacc.c:1646  */
+#line 3581 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 131:
-#line 1177 "grammar.y" /* yacc.c:1646  */
+#line 1185 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("orderelem -> ordername");
                 (yyval.tree) = astnode_make1(RULE_orderelem(1), (yyvsp[0].tree));
                 exitrule("orderelem -> ordername");
             }
-#line 3583 "grammar.tab.c" /* yacc.c:1646  */
+#line 3591 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 132:
-#line 1183 "grammar.y" /* yacc.c:1646  */
+#line 1191 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("orderelem -> ordername '(' exprlist ')'");
                 (yyval.tree) = astnode_make2(RULE_orderelem(2), (yyvsp[-3].tree), (yyvsp[-1].tree));
                 exitrule("orderelem -> ordername '(' exprlist ')'");
             }
-#line 3593 "grammar.tab.c" /* yacc.c:1646  */
+#line 3601 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 133:
-#line 1192 "grammar.y" /* yacc.c:1646  */
+#line 1200 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("OrderingList -> orderelem");
                 (yyval.tree) = astnode_make1(RULE_OrderingList(1), (yyvsp[0].tree));
                 exitrule("OrderingList -> orderelem");
             }
-#line 3603 "grammar.tab.c" /* yacc.c:1646  */
+#line 3611 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 134:
-#line 1199 "grammar.y" /* yacc.c:1646  */
+#line 1207 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("OrderingList -> orderelem ',' OrderingList");
                 (yyval.tree) = astnode_make2(RULE_OrderingList(2), (yyvsp[-2].tree), (yyvsp[0].tree));
                 exitrule("OrderingList -> orderelem ',' OrderingList");
             }
-#line 3613 "grammar.tab.c" /* yacc.c:1646  */
+#line 3621 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 135:
-#line 1208 "grammar.y" /* yacc.c:1646  */
+#line 1216 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("ordering -> orderelem");
                 (yyval.tree) = astnode_make1(RULE_ordering(1), (yyvsp[0].tree));
                 exitrule("ordering -> orderelem");
             }
-#line 3623 "grammar.tab.c" /* yacc.c:1646  */
+#line 3631 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 136:
-#line 1215 "grammar.y" /* yacc.c:1646  */
+#line 1223 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("ordering -> '(' OrderingList ')'");
                 (yyval.tree) = astnode_make1(RULE_ordering(2), (yyvsp[-1].tree));
                 exitrule("ordering -> '(' OrderingList ')'");
             }
-#line 3633 "grammar.tab.c" /* yacc.c:1646  */
+#line 3641 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 137:
-#line 1223 "grammar.y" /* yacc.c:1646  */
+#line 1231 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("cmdeq -> '='");
                 (yyval.i) = (yyvsp[0].i);
                 exitrule("cmdeq -> '='");
             }
-#line 3643 "grammar.tab.c" /* yacc.c:1646  */
+#line 3651 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 138:
-#line 1232 "grammar.y" /* yacc.c:1646  */
+#line 1240 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("mat_cmd -> MATRIX_CMD");
                 (yyval.tree) = astnode_make1(RULE_mat_cmd(1), astint_make((yyvsp[0].i)));
                 exitrule("mat_cmd -> MATRIX_CMD");
             }
-#line 3653 "grammar.tab.c" /* yacc.c:1646  */
+#line 3661 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 139:
-#line 1239 "grammar.y" /* yacc.c:1646  */
+#line 1247 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("mat_cmd -> INTMAT_CMD");
                 (yyval.tree) = astnode_make1(RULE_mat_cmd(2), astint_make((yyvsp[0].i)));
                 exitrule("mat_cmd -> INTMAT_CMD");
             }
-#line 3663 "grammar.tab.c" /* yacc.c:1646  */
+#line 3671 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 140:
-#line 1246 "grammar.y" /* yacc.c:1646  */
+#line 1254 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("mat_cmd -> BIGINTMAT_CMD");
                 (yyval.tree) = astnode_make1(RULE_mat_cmd(3), astint_make((yyvsp[0].i)));
                 exitrule("mat_cmd -> BIGINTMAT_CMD");
             }
-#line 3673 "grammar.tab.c" /* yacc.c:1646  */
+#line 3681 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 141:
-#line 1259 "grammar.y" /* yacc.c:1646  */
+#line 1267 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("filecmd -> '<' stringexpr");
                 (yyval.tree) = astnode_make1(RULE_filecmd(1), (yyvsp[0].tree));
                 exitrule("filecmd -> '<' stringexpr");
             }
-#line 3683 "grammar.tab.c" /* yacc.c:1646  */
+#line 3691 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 142:
-#line 1268 "grammar.y" /* yacc.c:1646  */
+#line 1276 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("helpcmd -> HELP_CMD STRINGTOK ';'");
                 (yyval.tree) = astnode_make1(RULE_helpcmd(1), aststring_make((yyvsp[-1].name)));
                 exitrule("helpcmd -> HELP_CMD STRINGTOK ';'");
             }
-#line 3693 "grammar.tab.c" /* yacc.c:1646  */
+#line 3701 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 143:
-#line 1275 "grammar.y" /* yacc.c:1646  */
+#line 1283 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("helpcmd -> HELP_CMD ';'");
                 (yyval.tree) = astnode_make0(RULE_helpcmd(2));
                 exitrule("helpcmd -> HELP_CMD ';'");
             }
-#line 3703 "grammar.tab.c" /* yacc.c:1646  */
+#line 3711 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 144:
-#line 1284 "grammar.y" /* yacc.c:1646  */
+#line 1292 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("examplecmd -> EXAMPLE_CMD STRINGTOK ';'");
                 (yyval.tree) = astnode_make1(RULE_examplecmd(1), aststring_make((yyvsp[-1].name)));
                 exitrule("examplecmd -> EXAMPLE_CMD STRINGTOK ';'");
             }
-#line 3713 "grammar.tab.c" /* yacc.c:1646  */
+#line 3721 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 145:
-#line 1293 "grammar.y" /* yacc.c:1646  */
+#line 1301 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("exportcmd -> EXPORT_CMD exprlist");
                 (yyval.tree) = astnode_make1(RULE_exportcmd(1), (yyvsp[0].tree));
                 exitrule("exportcmd -> EXPORT_CMD exprlist");
             }
-#line 3723 "grammar.tab.c" /* yacc.c:1646  */
+#line 3731 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 146:
-#line 1302 "grammar.y" /* yacc.c:1646  */
+#line 1310 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("killcmd -> KILL_CMD elemexpr");
                 (yyval.tree) = astnode_make1(RULE_killcmd(1), (yyvsp[0].tree));
                 exitrule("killcmd -> KILL_CMD elemexpr");
             }
-#line 3733 "grammar.tab.c" /* yacc.c:1646  */
+#line 3741 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 147:
-#line 1309 "grammar.y" /* yacc.c:1646  */
+#line 1317 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("killcmd -> killcmd ',' elemexpr");
                 (yyval.tree) = astnode_make2(RULE_killcmd(2), (yyvsp[-2].tree), (yyvsp[0].tree));
                 exitrule("killcmd -> killcmd ',' elemexpr");
             }
-#line 3743 "grammar.tab.c" /* yacc.c:1646  */
+#line 3751 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 148:
-#line 1318 "grammar.y" /* yacc.c:1646  */
+#line 1326 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("listcmd -> LISTVAR_CMD '(' ROOT_DECL ')'");
                 (yyval.tree) = astnode_make1(RULE_listcmd(1), astint_make((yyvsp[-1].i)));
                 exitrule("listcmd -> LISTVAR_CMD '(' ROOT_DECL ')'");
             }
-#line 3753 "grammar.tab.c" /* yacc.c:1646  */
+#line 3761 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 149:
-#line 1325 "grammar.y" /* yacc.c:1646  */
+#line 1333 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("listcmd -> LISTVAR_CMD '(' ROOT_DECL_LIST ')'");
                 (yyval.tree) = astnode_make1(RULE_listcmd(2), astint_make((yyvsp[-1].i)));
                 exitrule("listcmd -> LISTVAR_CMD '(' ROOT_DECL_LIST ')'");
             }
-#line 3763 "grammar.tab.c" /* yacc.c:1646  */
+#line 3771 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 150:
-#line 1332 "grammar.y" /* yacc.c:1646  */
+#line 1340 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("listcmd -> LISTVAR_CMD '(' ROOT_DECL ')'");
                 (yyval.tree) = astnode_make1(RULE_listcmd(3), astint_make((yyvsp[-1].i)));
                 exitrule("listcmd -> LISTVAR_CMD '(' ROOT_DECL ')'");
             }
-#line 3773 "grammar.tab.c" /* yacc.c:1646  */
+#line 3781 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 151:
-#line 1339 "grammar.y" /* yacc.c:1646  */
+#line 1347 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("listcmd -> LISTVAR_CMD '(' RING_DECL_LIST ')'");
                 (yyval.tree) = astnode_make1(RULE_listcmd(4), astint_make((yyvsp[-1].i)));
                 exitrule("listcmd -> LISTVAR_CMD '(' RING_DECL_LIST ')'");
             }
-#line 3783 "grammar.tab.c" /* yacc.c:1646  */
+#line 3791 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 152:
-#line 1346 "grammar.y" /* yacc.c:1646  */
+#line 1354 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("listcmd -> LISTVAR_CMD '(' RING_CMD ')'");
                 (yyval.tree) = astnode_make1(RULE_listcmd(5), astint_make((yyvsp[-1].i)));
                 exitrule("listcmd -> LISTVAR_CMD '(' RING_CMD ')'");
             }
-#line 3793 "grammar.tab.c" /* yacc.c:1646  */
+#line 3801 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 153:
-#line 1353 "grammar.y" /* yacc.c:1646  */
+#line 1361 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("listcmd -> LISTVAR_CMD '(' mat_cmd ')'");
                 (yyval.tree) = astnode_make1(RULE_listcmd(6), (yyvsp[-1].tree));
                 exitrule("listcmd -> LISTVAR_CMD '(' mat_cmd ')'");
             }
-#line 3803 "grammar.tab.c" /* yacc.c:1646  */
+#line 3811 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 154:
-#line 1360 "grammar.y" /* yacc.c:1646  */
+#line 1368 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("listcmd -> LISTVAR_CMD '(' PROC_CMD ')'");
                 (yyval.tree) = astnode_make1(RULE_listcmd(7), astint_make((yyvsp[-1].i)));
                 exitrule("listcmd -> LISTVAR_CMD '(' PROC_CMD ')'");
             }
-#line 3813 "grammar.tab.c" /* yacc.c:1646  */
+#line 3821 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 155:
-#line 1367 "grammar.y" /* yacc.c:1646  */
+#line 1375 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("listcmd -> LISTVAR_CMD '(' elemexpr ')'");
                 (yyval.tree) = astnode_make1(RULE_listcmd(8), (yyvsp[-1].tree));
                 exitrule("listcmd -> LISTVAR_CMD '(' elemexpr ')'");
             }
-#line 3823 "grammar.tab.c" /* yacc.c:1646  */
+#line 3831 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 156:
-#line 1374 "grammar.y" /* yacc.c:1646  */
+#line 1382 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("listcmd -> LISTVAR_CMD '(' elemexpr ',' ROOT_DECL ')'");
                 (yyval.tree) = astnode_make2(RULE_listcmd(9), (yyvsp[-3].tree), astint_make((yyvsp[-1].i)));
                 exitrule("listcmd -> LISTVAR_CMD '(' elemexpr ',' ROOT_DECL ')'");
             }
-#line 3833 "grammar.tab.c" /* yacc.c:1646  */
+#line 3841 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 157:
-#line 1381 "grammar.y" /* yacc.c:1646  */
+#line 1389 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("listcmd -> LISTVAR_CMD '(' elemexpr ',' ROOT_DECL_LIST ')'");
                 (yyval.tree) = astnode_make2(RULE_listcmd(10), (yyvsp[-3].tree), astint_make((yyvsp[-1].i)));
                 exitrule("listcmd -> LISTVAR_CMD '(' elemexpr ',' ROOT_DECL_LIST ')'");
             }
-#line 3843 "grammar.tab.c" /* yacc.c:1646  */
+#line 3851 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 158:
-#line 1388 "grammar.y" /* yacc.c:1646  */
+#line 1396 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("listcmd -> LISTVAR_CMD '(' elemexpr ',' RING_DECL ')'");
                 (yyval.tree) = astnode_make2(RULE_listcmd(11), (yyvsp[-3].tree), astint_make((yyvsp[-1].i)));
                 exitrule("listcmd -> LISTVAR_CMD '(' elemexpr ',' RING_DECL ')'");
             }
-#line 3853 "grammar.tab.c" /* yacc.c:1646  */
+#line 3861 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 159:
-#line 1395 "grammar.y" /* yacc.c:1646  */
+#line 1403 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("listcmd -> LISTVAR_CMD '(' elemexpr ',' RING_DECL_LIST ')'");
                 (yyval.tree) = astnode_make2(RULE_listcmd(12), (yyvsp[-3].tree), astint_make((yyvsp[-1].i)));
                 exitrule("listcmd -> LISTVAR_CMD '(' elemexpr ',' RING_DECL_LIST ')'");
             }
-#line 3863 "grammar.tab.c" /* yacc.c:1646  */
+#line 3871 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 160:
-#line 1402 "grammar.y" /* yacc.c:1646  */
+#line 1410 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("listcmd -> LISTVAR_CMD '(' elemexpr ',' RING_CMD ')'");
                 (yyval.tree) = astnode_make2(RULE_listcmd(13), (yyvsp[-3].tree), astint_make((yyvsp[-1].i)));
                 exitrule("listcmd -> LISTVAR_CMD '(' elemexpr ',' RING_CMD ')'");
             }
-#line 3873 "grammar.tab.c" /* yacc.c:1646  */
+#line 3881 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 161:
-#line 1409 "grammar.y" /* yacc.c:1646  */
+#line 1417 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("listcmd -> LISTVAR_CMD '(' elemexpr ',' mat_cmd ')'");
                 (yyval.tree) = astnode_make2(RULE_listcmd(14), (yyvsp[-3].tree), (yyvsp[-1].tree));
                 exitrule("listcmd -> LISTVAR_CMD '(' elemexpr ',' mat_cmd ')'");
             }
-#line 3883 "grammar.tab.c" /* yacc.c:1646  */
+#line 3891 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 162:
-#line 1416 "grammar.y" /* yacc.c:1646  */
+#line 1424 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("listcmd -> LISTVAR_CMD '(' elemexpr ',' PROC_CMD ')'");
                 (yyval.tree) = astnode_make2(RULE_listcmd(15), (yyvsp[-3].tree), astint_make((yyvsp[-1].i)));
                 exitrule("listcmd -> LISTVAR_CMD '(' elemexpr ',' PROC_CMD ')'");
             }
-#line 3893 "grammar.tab.c" /* yacc.c:1646  */
+#line 3901 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 163:
-#line 1423 "grammar.y" /* yacc.c:1646  */
+#line 1431 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("listcmd -> LISTVAR_CMD '(' ')'");
                 (yyval.tree) = astnode_make0(RULE_listcmd(16));
                 exitrule("listcmd -> LISTVAR_CMD '(' ')'");
             }
-#line 3903 "grammar.tab.c" /* yacc.c:1646  */
+#line 3911 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 164:
-#line 1432 "grammar.y" /* yacc.c:1646  */
+#line 1440 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("ringcmd1 -> RING_CMD");
                 (yyval.tree) = astnode_make0(RULE_ringcmd1(1));
                 exitrule("ringcmd1 -> RING_CMD");
             }
-#line 3913 "grammar.tab.c" /* yacc.c:1646  */
+#line 3921 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 165:
-#line 1445 "grammar.y" /* yacc.c:1646  */
+#line 1453 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("ringcmd -> ringcmd1 elemexpr cmdeq rlist ','  rlist ',' ordering");
                 (yyval.tree) = astnode_make4(RULE_ringcmd(1), (yyvsp[-6].tree), (yyvsp[-4].tree), (yyvsp[-2].tree), (yyvsp[0].tree));
                 exitrule("ringcmd -> ringcmd1 elemexpr cmdeq rlist ','  rlist ',' ordering");
             }
-#line 3923 "grammar.tab.c" /* yacc.c:1646  */
+#line 3931 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 166:
-#line 1452 "grammar.y" /* yacc.c:1646  */
+#line 1460 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("ringcmd -> ringcmd1 elemexpr");
                 (yyval.tree) = astnode_make1(RULE_ringcmd(2), (yyvsp[0].tree));
                 exitrule("ringcmd -> ringcmd1 elemexpr");
             }
-#line 3933 "grammar.tab.c" /* yacc.c:1646  */
+#line 3941 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 167:
-#line 1459 "grammar.y" /* yacc.c:1646  */
+#line 1467 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("ringcmd -> ringcmd1 elemexpr cmdeq elemexpr");
                 (yyval.tree) = astnode_make2(RULE_ringcmd(3), (yyvsp[-2].tree), (yyvsp[0].tree));
                 exitrule("ringcmd -> ringcmd1 elemexpr cmdeq elemexpr");
             }
-#line 3943 "grammar.tab.c" /* yacc.c:1646  */
+#line 3951 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 168:
-#line 1466 "grammar.y" /* yacc.c:1646  */
+#line 1474 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("ringcmd -> ringcmd1 elemexpr cmdeq elemexpr '[' exprlist ']'");
                 (yyval.tree) = astnode_make3(RULE_ringcmd(4), (yyvsp[-5].tree), (yyvsp[-3].tree), (yyvsp[-1].tree));
                 exitrule("ringcmd -> ringcmd1 elemexpr cmdeq elemexpr '[' exprlist ']'");
             }
-#line 3953 "grammar.tab.c" /* yacc.c:1646  */
+#line 3961 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 169:
-#line 1475 "grammar.y" /* yacc.c:1646  */
+#line 1483 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("scriptcmd -> SYSVAR stringexpr");
                 (yyval.tree) = astnode_make2(RULE_scriptcmd(1), astint_make((yyvsp[-1].i)), (yyvsp[0].tree));
                 exitrule("scriptcmd -> SYSVAR stringexpr");
             }
-#line 3963 "grammar.tab.c" /* yacc.c:1646  */
+#line 3971 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 170:
-#line 1484 "grammar.y" /* yacc.c:1646  */
+#line 1492 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("setrings -> SETRING_CMD");
                 (yyval.tree) = astnode_make0(RULE_setrings(1));
                 exitrule("setrings -> SETRING_CMD");
             }
-#line 3973 "grammar.tab.c" /* yacc.c:1646  */
+#line 3981 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 171:
-#line 1490 "grammar.y" /* yacc.c:1646  */
+#line 1498 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("setrings -> KEEPRING_CMD");
                 (yyval.tree) = astnode_make0(RULE_setrings(2));
                 exitrule("setrings -> KEEPRING_CMD");
             }
-#line 3983 "grammar.tab.c" /* yacc.c:1646  */
+#line 3991 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 172:
-#line 1499 "grammar.y" /* yacc.c:1646  */
+#line 1507 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("setringcmd -> setrings expr");
                 (yyval.tree) = astnode_make2(RULE_setringcmd(1), (yyvsp[-1].tree), (yyvsp[0].tree));
                 exitrule("setringcmd -> setrings expr");
             }
-#line 3993 "grammar.tab.c" /* yacc.c:1646  */
+#line 4001 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 173:
-#line 1508 "grammar.y" /* yacc.c:1646  */
+#line 1516 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("typecmd -> TYPE_CMD expr");
                 (yyval.tree) = astnode_make1(RULE_typecmd(1), (yyvsp[0].tree));
                 exitrule("typecmd -> TYPE_CMD expr");
             }
-#line 4003 "grammar.tab.c" /* yacc.c:1646  */
+#line 4011 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 174:
-#line 1515 "grammar.y" /* yacc.c:1646  */
+#line 1523 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("typecmd -> exprlist");
                 (yyval.tree) = astnode_make1(RULE_typecmd(2), (yyvsp[0].tree));
                 exitrule_ex("typecmd -> exprlist", (yyval.tree));
             }
-#line 4013 "grammar.tab.c" /* yacc.c:1646  */
+#line 4021 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 175:
-#line 1527 "grammar.y" /* yacc.c:1646  */
+#line 1535 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("ifcmd -> IF_CMD '(' expr ')' '{' lines '}'");
                 (yyval.tree) = astnode_make2(RULE_ifcmd(1), (yyvsp[-4].tree), (yyvsp[-1].tree));
                 exitrule_ex("ifcmd -> IF_CMD '(' expr ')' '{' lines '}'",(yyval.tree));
             }
-#line 4023 "grammar.tab.c" /* yacc.c:1646  */
+#line 4031 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 176:
-#line 1534 "grammar.y" /* yacc.c:1646  */
+#line 1542 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("ifcmd -> ELSE_CMD '{' lines '}'");
                 (yyval.tree) = astnode_make1(RULE_ifcmd(2), (yyvsp[-1].tree));
                 exitrule_ex("ifcmd -> ELSE_CMD '{' lines '}'",(yyval.tree));
             }
-#line 4033 "grammar.tab.c" /* yacc.c:1646  */
+#line 4041 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 177:
-#line 1541 "grammar.y" /* yacc.c:1646  */
+#line 1549 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("ifcmd -> IF_CMD '(' expr ')' BREAK_CMD");
                 (yyval.tree) = astnode_make1(RULE_ifcmd(3), (yyvsp[-2].tree));
                 exitrule("ifcmd -> IF_CMD '(' expr ')' BREAK_CMD");
             }
-#line 4043 "grammar.tab.c" /* yacc.c:1646  */
+#line 4051 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 178:
-#line 1548 "grammar.y" /* yacc.c:1646  */
+#line 1556 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("ifcmd -> BREAK_CMD");
                 (yyval.tree) = astnode_make0(RULE_ifcmd(4));
                 exitrule("ifcmd -> BREAK_CMD");
             }
-#line 4053 "grammar.tab.c" /* yacc.c:1646  */
+#line 4061 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 179:
-#line 1555 "grammar.y" /* yacc.c:1646  */
+#line 1563 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("ifcmd -> CONTINUE_CMD");
                 (yyval.tree) = astnode_make0(RULE_ifcmd(5));
                 exitrule("ifcmd -> CONTINUE_CMD");
             }
-#line 4063 "grammar.tab.c" /* yacc.c:1646  */
+#line 4071 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 180:
-#line 1564 "grammar.y" /* yacc.c:1646  */
+#line 1572 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("whilecmd -> WHILE_CMD '(' expr ')' '{' lines '}'");
                 (yyval.tree) = astnode_make2(RULE_whilecmd(1), (yyvsp[-4].tree), (yyvsp[-1].tree));
                 exitrule_ex("whilecmd -> WHILE_CMD '(' expr ')' '{' lines '}'",(yyval.tree));
             }
-#line 4073 "grammar.tab.c" /* yacc.c:1646  */
+#line 4081 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 181:
-#line 1573 "grammar.y" /* yacc.c:1646  */
+#line 1581 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("forcmd -> FOR_CMD '(' npprompt ';' expr ';' npprompt ')' '{' lines '}'");
                 (yyval.tree) = astnode_make4(RULE_forcmd(1), (yyvsp[-8].tree), (yyvsp[-6].tree), (yyvsp[-4].tree), (yyvsp[-1].tree));
                 exitrule_ex("forcmd -> FOR_CMD '(' npprompt ';' expr ';' npprompt ')' '{' lines '}'",(yyval.tree));
             }
-#line 4083 "grammar.tab.c" /* yacc.c:1646  */
+#line 4091 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 182:
-#line 1582 "grammar.y" /* yacc.c:1646  */
+#line 1590 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("proccmd -> PROC_CMD extendedid '{' lines '}'");
                 (yyval.tree) = astnode_make2(RULE_proccmd(1), (yyvsp[-3].tree), (yyvsp[-1].tree));
                 exitrule("proccmd -> PROC_CMD extendedid '{' lines '}'");
             }
-#line 4093 "grammar.tab.c" /* yacc.c:1646  */
+#line 4101 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 183:
-#line 1589 "grammar.y" /* yacc.c:1646  */
+#line 1597 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("proccmd -> PROC_DEF '(' ')' '{' lines '}'");
                 (yyval.tree) = astnode_make2(RULE_proccmd(2), aststring_make((yyvsp[-5].name)), (yyvsp[-1].tree));
                 exitrule_ex("proccmd -> PROC_DEF '(' ')' '{' lines '}'",(yyval.tree));
             }
-#line 4103 "grammar.tab.c" /* yacc.c:1646  */
+#line 4111 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 184:
-#line 1596 "grammar.y" /* yacc.c:1646  */
+#line 1604 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("proccmd -> PROC_DEF '(' procargs ')' '{' lines '}'");
                 (yyval.tree) = astnode_make3(RULE_proccmd(3), aststring_make((yyvsp[-6].name)), (yyvsp[-4].tree), (yyvsp[-1].tree));
                 exitrule_ex("proccmd -> PROC_DEF '(' procargs ')' '{' lines '}'",(yyval.tree));
             }
-#line 4113 "grammar.tab.c" /* yacc.c:1646  */
+#line 4121 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 185:
-#line 1603 "grammar.y" /* yacc.c:1646  */
+#line 1611 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("proccmd -> PROC_DEF STRINGTOK '(' procargs ')' '{' lines '}'");
                 (yyval.tree) = astnode_make4(RULE_proccmd(4), aststring_make((yyvsp[-7].name)), aststring_make((yyvsp[-6].name)), (yyvsp[-4].tree), (yyvsp[-1].tree));
                 exitrule_ex("proccmd -> PROC_DEF STRINGTOK '(' procargs ')' '{' lines '}'",(yyval.tree));
             }
-#line 4123 "grammar.tab.c" /* yacc.c:1646  */
+#line 4131 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 186:
-#line 1612 "grammar.y" /* yacc.c:1646  */
+#line 1620 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("parametercmd -> PARAMETER declare_ip_variable");
                 (yyval.tree) = astnode_make1(RULE_parametercmd(1), (yyvsp[0].tree));
                 exitrule("parametercmd -> PARAMETER declare_ip_variable");
             }
-#line 4133 "grammar.tab.c" /* yacc.c:1646  */
+#line 4141 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 187:
-#line 1619 "grammar.y" /* yacc.c:1646  */
+#line 1627 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("parametercmd -> PARAMETER expr");
                 (yyval.tree) = astnode_make1(RULE_parametercmd(2), (yyvsp[0].tree));
                 exitrule("parametercmd -> PARAMETER expr");
             }
-#line 4143 "grammar.tab.c" /* yacc.c:1646  */
+#line 4151 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 188:
-#line 1628 "grammar.y" /* yacc.c:1646  */
+#line 1636 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("returncmd -> RETURN '(' exprlist ')'");
                 (yyval.tree) = astnode_make1(RULE_returncmd(1), (yyvsp[-1].tree));
                 exitrule_ex("returncmd -> RETURN '(' exprlist ')'",(yyval.tree));
             }
-#line 4153 "grammar.tab.c" /* yacc.c:1646  */
+#line 4161 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
   case 189:
-#line 1635 "grammar.y" /* yacc.c:1646  */
+#line 1643 "grammar.y" /* yacc.c:1646  */
     {
                 enterrule("returncmd -> RETURN '(' ')'");
                 (yyval.tree) = astnode_make0(RULE_returncmd(2));
                 exitrule_ex("returncmd -> RETURN '(' ')'",(yyval.tree));
             }
-#line 4163 "grammar.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 190:
-#line 1644 "grammar.y" /* yacc.c:1646  */
-    {
-                (yyval.tree) = astnode_make2(RULE_procargs(1), astint_make((yyvsp[-1].i)), (yyvsp[0].tree));
-            }
 #line 4171 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
-  case 191:
-#line 1649 "grammar.y" /* yacc.c:1646  */
+  case 190:
+#line 1652 "grammar.y" /* yacc.c:1646  */
     {
-                (yyval.tree) = astnode_make1(RULE_procargs(2), (yyvsp[0].tree));
+                (yyval.tree) = astnode_make2(RULE_procargs(1), astint_make((yyvsp[-1].i)), (yyvsp[0].tree));
             }
 #line 4179 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
-  case 192:
-#line 1654 "grammar.y" /* yacc.c:1646  */
+  case 191:
+#line 1657 "grammar.y" /* yacc.c:1646  */
     {
-                (yyval.tree) = astnode_make3(RULE_procargs(3), astint_make((yyvsp[-3].i)), (yyvsp[-2].tree), (yyvsp[0].tree));
+                (yyval.tree) = astnode_make1(RULE_procargs(2), (yyvsp[0].tree));
             }
 #line 4187 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
-  case 193:
-#line 1659 "grammar.y" /* yacc.c:1646  */
+  case 192:
+#line 1662 "grammar.y" /* yacc.c:1646  */
     {
-                (yyval.tree) = astnode_make2(RULE_procargs(4), (yyvsp[-2].tree), (yyvsp[0].tree));
+                (yyval.tree) = astnode_make3(RULE_procargs(3), astint_make((yyvsp[-3].i)), (yyvsp[-2].tree), (yyvsp[0].tree));
             }
 #line 4195 "grammar.tab.c" /* yacc.c:1646  */
     break;
 
+  case 193:
+#line 1667 "grammar.y" /* yacc.c:1646  */
+    {
+                (yyval.tree) = astnode_make2(RULE_procargs(4), (yyvsp[-2].tree), (yyvsp[0].tree));
+            }
+#line 4203 "grammar.tab.c" /* yacc.c:1646  */
+    break;
 
-#line 4199 "grammar.tab.c" /* yacc.c:1646  */
+
+#line 4207 "grammar.tab.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -4423,7 +4431,7 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 1664 "grammar.y" /* yacc.c:1906  */
+#line 1672 "grammar.y" /* yacc.c:1906  */
 
 
 

@@ -978,13 +978,21 @@ expr_arithmetic:
         | expr '<' expr
             {
                 enterrule("expr_arithmetic -> expr '<' expr");
-                if ($<i>2 == '>')
+                if ($<i>2 == GE)
                 {
                     $$ = astnode_make2(RULE_expr_arithmetic(9), $1, $3);
                 }
-                else
+                else if ($<i>2 == LE)
                 {
                     $$ = astnode_make2(RULE_expr_arithmetic(10), $1, $3);
+                }
+                else if ($<i>2 == '>')
+                {
+                    $$ = astnode_make2(RULE_expr_arithmetic(11), $1, $3);
+                }
+                else
+                {
+                    $$ = astnode_make2(RULE_expr_arithmetic(12), $1, $3);
                 }
                 exitrule_ex("expr_arithmetic -> expr '<' expr",$$);
             }
@@ -994,11 +1002,11 @@ expr_arithmetic:
                 enterrule("expr_arithmetic -> expr '&' expr");
                 if ($<i>2 == '&')
                 {
-                    $$ = astnode_make2(RULE_expr_arithmetic(11), $1, $3);
+                    $$ = astnode_make2(RULE_expr_arithmetic(13), $1, $3);
                 }
                 else
                 {
-                    $$ = astnode_make2(RULE_expr_arithmetic(12), $1, $3);
+                    $$ = astnode_make2(RULE_expr_arithmetic(14), $1, $3);
                 }
                 exitrule_ex("expr_arithmetic -> expr '&' expr",$$);
             }
@@ -1006,42 +1014,42 @@ expr_arithmetic:
         | expr NOTEQUAL expr
             {
                 enterrule("expr_arithmetic -> expr NOTEQUAL expr");
-                $$ = astnode_make2(RULE_expr_arithmetic(13), $1, $3);
+                $$ = astnode_make2(RULE_expr_arithmetic(15), $1, $3);
                 exitrule("expr_arithmetic -> expr NOTEQUAL expr");
             }
 
         | expr EQUAL_EQUAL expr
             {
                 enterrule("expr_arithmetic -> expr EQUAL_EQUAL expr");
-                $$ = astnode_make2(RULE_expr_arithmetic(14), $1, $3);
+                $$ = astnode_make2(RULE_expr_arithmetic(16), $1, $3);
                 exitrule("expr_arithmetic -> expr EQUAL_EQUAL expr");
             }
 
         | expr DOTDOT expr
             {
                 enterrule("expr_arithmetic -> expr DOTDOT expr");
-                $$ = astnode_make2(RULE_expr_arithmetic(15), $1, $3);
+                $$ = astnode_make2(RULE_expr_arithmetic(17), $1, $3);
                 exitrule("expr_arithmetic -> expr DOTDOT expr");
             }
 
         | expr ':' expr
             {
                 enterrule("expr_arithmetic -> expr ':' expr");
-                $$ = astnode_make2(RULE_expr_arithmetic(16), $1, $3);
+                $$ = astnode_make2(RULE_expr_arithmetic(18), $1, $3);
                 exitrule("expr_arithmetic -> expr ':' expr");
             }
 
         | NOT expr
             {
                 enterrule("expr_arithmetic -> NOT expr");
-                $$ = astnode_make1(RULE_expr_arithmetic(17), $2);
+                $$ = astnode_make1(RULE_expr_arithmetic(19), $2);
                 exitrule("expr_arithmetic -> NOT expr");
             }
 
         | '-' expr %prec UMINUS
             {
                 enterrule("expr_arithmetic -> '-' expr");
-                $$ = astnode_make1(RULE_expr_arithmetic(18), $2);
+                $$ = astnode_make1(RULE_expr_arithmetic(20), $2);
                 exitrule("expr_arithmetic -> '-' expr");
             }
         ;
