@@ -56,14 +56,17 @@ struct token_lookup_entry {
 };
 
 static struct token_lookup_entry token_lookup[] = {
-{"bigint",          361, ROOT_DECL},
-{"bigintmat",       269, 269},
-{"int",             419, ROOT_DECL},
-{"intmat",          270, 270},
-{"intvec",          424, ROOT_DECL_LIST},
-{"list",            441, ROOT_DECL_LIST},
-{"print",           478, CMD_12},
-{"string",          508, ROOT_DECL_LIST},
+{"bigint",      361,    ROOT_DECL},
+{"bigintmat",   269,    BIGINTMAT_CMD},
+{"continue",    331,    CONTINUE_CMD},
+{"int",         419,    ROOT_DECL},
+{"intmat",      270,    INTMAT_CMD},
+{"intvec",      424,    ROOT_DECL_LIST},
+{"list",        441,    ROOT_DECL_LIST},
+{"print",       478,    CMD_12},
+{"size",        378,    CMD_1},
+{"string",      508,    ROOT_DECL_LIST},
+{"typeof",      517,    CMD_1},
 };
 
 

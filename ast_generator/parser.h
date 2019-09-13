@@ -43,7 +43,8 @@
 #define RULE_proccmd(i)             (4200 + i)
 #define RULE_parametercmd(i)        (4300 + i)
 #define RULE_returncmd(i)           (4400 + i)
-#define RULE_procargs(i)            (4500 + i)
+#define RULE_procarglist(i)         (4500 + i)
+#define RULE_procarg(i)             (4600 + i)
 
 
 

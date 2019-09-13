@@ -1,4 +1,36 @@
 
+#=
+
+It is possible for elements of a Singular list to be "nothing", i.e. l[1] after
+list l; l[2] = 0;
+
+Functions can also return "nothing", i.e. the return value of
+proc f() {return();};
+
+Therefore we use Julia's :nothing for both of these "nothings" and do NOT include Nothing in SingularType below.
+
+This "nothing" is distinct from a zero-length tuple and is very distinct from the Unknown type defined below
+For example, the statement
+a, b = 1, f(), 1;
+fails in the Singular interpreter because the right hand side has length 3. The statement
+a, b, c = 1, f(), 1
+fails in the Singular interpreter because something on the "right side is not a datum".
+
+The Julia interpreter will fail in the first example because the length of the rhs tuple is checked before assignment.
+The Julia interpreter will fail in the second example because the assignment to b is done via
+b = convert2something(..)       # "something" is the stored type of b, which we won't allow to be Nothing
+and the convert2something will throw an error on :nothing
+
+In general, it is allowed to pass nothing around in singular, i.e.
+list k, l;
+l[2] = 0;       // size(l) is 2, l[1] is nothing
+k[1] = 0;       // size(k) == 1
+k[1] = l[1];    // size(k) == 0
+
+Therefore, the error must occur when trying to assign nothing to b, and not when constructing the tuple.
+
+=#
+
 struct Unknown
     name::String
 end
@@ -12,7 +44,7 @@ end
 # BigInt same
 
 # Singular splats all arguments by default, while we need ... in Julia
-# The julia String is iterable, so we need a NiString as a not-iterable String container
+# The julia String is iterable, so we need a NiString as a non-iterable String container
 struct NiString
     string::String
 end
@@ -37,15 +69,14 @@ struct List
     list::ListData
 end
 
-
-function Base.iterate(a::IntVec)
-    return iterate(a, 0)
-end
-
-function Base.iterate(a::IntVec, state)
-    return state == 0 ? (a, state + 1) : nothing
-end
-
+Base.iterate(a::Nothing) = iterate(a, 0)
+Base.iterate(a::Nothing, state) = (state == 0 ? (a, state + 1) : nothing)
+Base.iterate(a::NiString) = iterate(a, 0)
+Base.iterate(a::NiString, state) = (state == 0 ? (a, state + 1) : nothing)
+Base.iterate(a::IntVec) = iterate(a, 0)
+Base.iterate(a::IntVec, state) = (state == 0 ? (a, state + 1) : nothing)
+Base.iterate(a::List) = iterate(a, 0)
+Base.iterate(a::List, state) = (state == 0 ? (a, state + 1) : nothing)
 
 
 const SingularType = Union{Unknown, Proc, Int, BigInt, NiString, IntVec, IntMat, BigIntMat, List}
@@ -59,27 +90,33 @@ const _SingularType = Union{Unknown, Proc, Int, BigInt, NiString, IntVec, IntMat
 
 
 function Base.deepcopy_internal(a::IntVec, dict::IdDict)
-  return IntVec(deepcopy(a.vector))
+    return IntVec(deepcopy(a.vector))
 end
 
 function Base.deepcopy_internal(a::IntMat, dict::IdDict)
-  return IntMat(deepcopy(a.matrix))
+    return IntMat(deepcopy(a.matrix))
 end
 
 function Base.deepcopy_internal(a::BigIntMat, dict::IdDict)
-  return BigIntMat(deepcopy(a.matrix))
+    return BigIntMat(deepcopy(a.matrix))
 end
 
 function Base.deepcopy_internal(a::ListData, dict::IdDict)
-  return ListData(deepcopy(a.data))
+    return ListData(deepcopy(a.data))
 end
 
 function Base.deepcopy_internal(a::List, dict::IdDict)
-  return List(deepcopy(a.list))
+    return List(deepcopy(a.list))
 end
 
 
 #copiers returning SingularType, usually so that we can assign it somewhere
+
+scopy(a::Nothing) = a
+
+scopy(a::Proc) = a
+
+scopy(a::Unknown) = a
 
 scopy(a::Int) = a
 
@@ -117,6 +154,12 @@ sedit(a::List) = a.list
 
 # reference to the underlying non SingularType
 
+sref(a::Nothing) = a
+
+sref(a::Proc) = a
+
+sref(a::Unknown) = a
+
 sref(a::Int) = a
 
 sref(a::BigInt) = a
@@ -139,21 +182,18 @@ sref(a::List) = a.list
 ########### type conversions ##################################################
 # each conversion returns an object of the corresponding type
 
-#singular maintains bools as ints, julia needs real bools for control flow
+# Singular maintains bools as ints, julia needs real bools for control flow
 
 function sasbool(a::Int)
     return a != 0
 end
 
-function sasbool(a::BigInt)
-    return a != 0
-end
-
 function sasbool(a)
-    return false
+    error("expected int for boolean expression")
+    return Int(0)
 end
 
-################### int ########################
+
 
 function sconvert2int(a::Int)
     return a
@@ -163,7 +203,7 @@ function sconvert2int(a::BigInt)
     if typemin(Int) <= a <= typemax(Int)
         return Int(a)
     else
-        error("cannot convert to int")
+        error("cannot convert bigint to int")
         return Int(0)
     end
 end
@@ -173,7 +213,7 @@ function sconvert2int(a)
     return Int(0)
 end
 
-################### bigint ########################
+
 
 function sconvert2bigint(a::Int)
     return BigInt(a)
@@ -188,7 +228,7 @@ function sconvert2bigint(a)
     return BigInt(0)
 end
 
-################### string ########################
+
 
 function sconvert2string(a::NiString)
     return a
@@ -199,7 +239,7 @@ function sconvert2string(a::NiString)
     return NiString("")
 end
 
-################### intvec ########################
+
 
 function sconvert2intvec(a::IntVec)
     return a
@@ -221,7 +261,7 @@ function sconvert2intvec(a::Tuple{Vararg{SingularType}})
     return IntVec(v)
 end
 
-################### intmat ########################
+
 
 function sconvert2intmat(a::IntMat)
     return a
@@ -270,6 +310,11 @@ function sconvert2intmat(a::_List, nrows::Int, ncols::Int)
     end
     return IntMat(mat)
 end
+
+function scast2list(v...)
+    return List(ListData([scopy(i) for i in v]))
+end
+
 
 
 function sconvert2bigintmat(a::BigIntMat)
@@ -321,6 +366,7 @@ function sconvert2bigintmat(a::_List, nrows::Int, ncols::Int)
 end
 
 
+
 function sconvert2list(a::List)
     return a
 end
@@ -345,7 +391,7 @@ function _sindenting_print(a::Unknown, indent::Int)
     return " "^indent * "UNKNOWN IDENTIFIER " * a.name
 end
 
-function _sindenting_print(a::Unknown, indent::Int)
+function _sindenting_print(a::Proc, indent::Int)
     return " "^indent * "procname: " * string(a.name)
 end
 
@@ -354,7 +400,7 @@ function _sindenting_print(a::Union{Int, BigInt}, indent::Int)
 end
 
 function _sindenting_print(a::NiString, indent::Int)
-    return a.string
+    return " "^indent * a.string
 end
 
 function _sindenting_print(a::Union{_IntMat, _BigIntMat}, indent::Int)
@@ -366,13 +412,12 @@ function _sindenting_print(a::Union{_IntMat, _BigIntMat}, indent::Int)
         for j in 1:ncols
             s *= string(A[i,j])
             if j < ncols
-                s *= ", "
+                s *= ", " # TODO low priority: align columns
             end
         end
         if i < nrows
-            s *= ","
+            s *= ",\n"
         end
-        s *= "\n"
     end
     return s;
 end
@@ -380,9 +425,14 @@ end
 function _sindenting_print(a::_List, indent::Int)
     s = ""
     A = sref(a).data
-    for i in 1::length(A)
-        s *= " "^indent * "[" * i * "]:\n"
-        s *= _sindenting_print(A[i], indent + 3)
+    for i in 1:length(A)
+        s *= " "^indent * "[" * string(i) * "]:\n"
+        if A[i] != nothing
+            s *= _sindenting_print(A[i], indent + 3)
+            if i < length(A)
+                s *= "\n"
+            end
+        end
     end
     return s
 end
@@ -394,6 +444,11 @@ function _sindenting_print(a::Tuple{Vararg{SingularType}}, indent::Int)
     end
 end
 
+#the print function in Singular returns a string and does not print
+function sprint(::Nothing)
+    return ""
+end
+
 function sprint(a::_SingularType)
     return NiString(_sindenting_print(a, 0))
 end
@@ -402,7 +457,7 @@ function sprint(a::Tuple{Vararg{SingularType}})
     return NiString(_sindenting_print(a, 0))
 end
 
-
+# the semicolon in Singular is the method to actually print something
 function _sprintout(::Nothing)
     return
 end
@@ -415,6 +470,7 @@ function _sprintout(a::Tuple{Vararg{SingularType}})
     println(_sindenting_print(a, 0))
 end
 
+# type ...; will call _sprintouttype
 function _sprintouttype(a::_SingularType)
     println("add correct type printing here")
 end
@@ -513,10 +569,25 @@ end
 function ssetindex(a::_List, i::Int, b)
     bcopy = scopy(b) # copy before the possible resize
     r = sref(a).data
-    if i > length(r)
-        resize!(r, i)
+    if bcopy == nothing
+        if i < length(r)
+            r[i] = nothing
+        # putting nothing at the end pops the list
+        elseif i == length(r)
+            pop!(r)
+        end        
+    else
+        # nothing fills out a list when we assign past the end
+        org_len = length(r)
+        if i > org_len
+            resize!(r, i)
+            while org_len + 1 < i
+                r[org_len + 1] = nothing
+                org_len += 1
+            end
+        end
+        r[i] = bcopy
     end
-    r[i] = bcopy
     return nothing
 end
 
@@ -554,7 +625,40 @@ function schecktuplelength(a::Tuple{Vararg{SingularType}}, n::Int)
 end
 
 
-########### arithmetic operations ##############################################
+########### operations ##############################################
+
+stypeof(::Nothing)      = NiString("none")
+stypeof(::Unknown)      = NiString("?unknown type?")
+stypeof(::Proc)         = NiString("proc")
+stypeof(::Int)          = NiString("int")
+stypeof(::BigInt)       = NiString("bigint")
+stypeof(::NiString)     = NiString("string")
+stypeof(::_IntVec)      = NiString("intvec")
+stypeof(::_IntMat)      = NiString("intmat")
+stypeof(::_BigIntMat)   = NiString("bigintmat")
+stypeof(::_List)        = NiString("list\"") # TODO fix lexer
+
+function ssize(a::Int)
+    return Int(a != 0)
+end
+
+function ssize(a::BigInt)
+    return Int(a.size);
+end
+
+function ssize(a::_IntVec)
+    return Int(length(sref(a)))
+end
+
+function ssize(a::Union{_IntMat, _BigIntMat})
+    nrows, ncols = size(sref(a))
+    return Int(nrows * ncols)
+end
+
+function ssize(a::_List)
+    return Int(length(sref(a).data))
+end
+
 
 splus(a::Int, b::Int) = Base.checked_add(a, b)
 splus(a::Int, b::BigInt) = a + b
@@ -641,25 +745,26 @@ spower(a::Int, b::BigInt) = a ^ b
 spower(a::BigInt, b::Int) = a ^ b
 spower(a::BigInt, b::BigInt) = a ^ b
 
-sinc(a::Int) = a + 1
+sinc(a::Int) = Base.checked_add(a, 1)
 sinc(a::BigInt) = a + 1
 
 function sinc(a)
     error("cannot increment")
 end
 
-sdec(a::Int) = b + 1
-sdec(a::BigInt) = b + 1
+sdec(a::Int) = Base.checked_sub(b, 1)
+sdec(a::BigInt) = b - 1
 
 function sdec(a)
     error("cannot decrement")
 end
 
 
-sequalequal(a::Int, b::Int) = a == b
-sequalequal(a::Int, b::BigInt) = a == b
-sequalequal(a::BigInt, b::Int) = a == b
-sequalequal(a::BigInt, b::BigInt) = a == b
+sequalequal(a::Int, b::Int) = Int(a == b)
+sequalequal(a::Int, b::BigInt) = Int(a == b)
+sequalequal(a::BigInt, b::Int) = Int(a == b)
+sequalequal(a::BigInt, b::BigInt) = Int(a == b)
+sequalequal(a::NiString, b::NiString) = Int(a == b)
 
 sless(a::Int, b::Int) = Int(a < b)
 sless(a::Int, b::BigInt) = Int(a < b)
@@ -755,7 +860,8 @@ macro RULE_forcmd(i)              ;return(4100 + i); end
 macro RULE_proccmd(i)             ;return(4200 + i); end
 macro RULE_parametercmd(i)        ;return(4300 + i); end
 macro RULE_returncmd(i)           ;return(4400 + i); end
-macro RULE_procargs(i)            ;return(4500 + i); end
+macro RULE_procarglist(i)         ;return(4500 + i); end
+macro RULE_procarg(i)             ;return(4600 + i); end
 
 function astprint(a::Int, indent::Int)
     print(" "^indent);
@@ -858,7 +964,9 @@ function astprint(a::AstNode, indent::Int)
     elseif 4400 < a.rule < 4500
         print("RULE_returncmd ")
     elseif 4500 < a.rule < 4600
-        print("RULE_procargs ")
+        print("RULE_procarglist ")
+    elseif 4600 < a.rule < 4700
+        print("RULE_procarg ")
     else
         println("!!unknown rule")
     end
@@ -930,7 +1038,7 @@ function convert_elemexpr(a::AstNode, env::AstEnv)
             return x
         end
     elseif a.rule == @RULE_elemexpr(6)
-        b::Array{Any} = convert_exprlist(a.child[2], env)
+        b = convert_exprlist(a.child[2], env)::Array{Any}
         c = a.child[1]
         if c.child[1].rule == @RULE_extendedid(1)
             return Expr(:call, Symbol(c.child[1].child[1]), make_tuple_array_nocopy(b)...)
@@ -939,8 +1047,25 @@ function convert_elemexpr(a::AstNode, env::AstEnv)
         end
     elseif a.rule == @RULE_elemexpr(10)
         return convert_stringexpr(a.child[1], env)
+    elseif a.rule == @RULE_elemexpr(13)
+        t = a.child[1]::Int
+        if t == 441
+            b = convert_exprlist(a.child[2], env)::Array{Any}
+            return Expr(:call, :scast2list, make_tuple_array_nocopy(b)...)
+        else
+            throw(TranspileError("internal error in convert_elemexpr 13"))
+        end
+    elseif a.rule == @RULE_elemexpr(18)
+        t = a.child[1]::Int
+        if t == 517
+            return Expr(:call, :stypeof, convert_expr(a.child[2], env))
+        elseif t == 378
+            return Expr(:call, :ssize, convert_expr(a.child[2], env))
+        else
+            throw(TranspileError("internal error in convert_elemexpr 19"))
+        end
     elseif a.rule == @RULE_elemexpr(19)
-        t::Int = a.child[1]
+        t = a.child[1]::Int
         if t == 478
             return Expr(:call, :sprint, convert_expr(a.child[2], env))
         else
@@ -1070,6 +1195,8 @@ coerce_for_assign(::Type{IntVec}, a::IntVec)    = a
 coerce_for_assign(::Type{IntVec}, a::Expr)      = Expr(:call, :sconvert2intvec, a)
 coerce_for_assign(::Type{IntMat}, a::Expr)      = Expr(:call, :sconvert2intmat, a)
 coerce_for_assign(::Type{BigIntMat}, a::Expr)   = Expr(:call, :sconvert2bigintmat, a)
+coerce_for_assign(::Type{List}, a::List)        = a
+coerce_for_assign(::Type{List}, a::Symbol)      = Expr(:call, :sconvert2list, a)
 coerce_for_assign(::Type{List}, a::Expr)        = Expr(:call, :sconvert2list, a)
 
 
@@ -1240,6 +1367,12 @@ function convert_declare_ip_variable!(vars::Array{AstNode}, a::AstNode, env::Ast
                     add_local_var!(env, s, IntVec)
                     push!(r.args, Expr(:(=), Symbol(s), coerce_for_assign(IntVec, IntVec(Int[0]))))
                 end
+            elseif tcode == 441
+                for m in vars
+                    s::String = m.child[1].child[1]
+                    add_local_var!(env, s, List)
+                    push!(r.args, Expr(:(=), Symbol(s), coerce_for_assign(List, List(ListData(Any[])))))
+                end
             else
                 throw(TranspileError("internal error in convert_declare_ip_variable 1"))
             end   
@@ -1302,13 +1435,22 @@ function block_append!(t::Expr, b)
 end
 
 
-function convert_ifcmd(a::AstNode, env::AstEnv)
+function convert_ifcmd(a::AstNode, env::AstEnv) #perfect
     @assert 0 < a.rule - @RULE_ifcmd(0) < 100
     if a.rule == @RULE_ifcmd(1)
-        return Expr(:if, Expr(:call, :sasbool, convert_expr(a.child[1], env)),
-                         convert_lines(a.child[2], env))
+        test = convert_expr(a.child[1], env)
+        body = convert_lines(a.child[2], env)
+        return Expr(:if, Expr(:call, :sasbool, test), body)
     elseif a.rule == @RULE_ifcmd(2)
+        # if the "else" were correctly paired with an "if", if should have been handled by find_if_else
         throw(TranspileError("else without if"))
+    elseif a.rule == @RULE_ifcmd(3)
+        test = convert_expr(a.child[1], env)
+        return Expr(:if, Expr(:call, :sasbool, test), Expr(:break))        
+    elseif a.rule == @RULE_ifcmd(4)
+        return Expr(:break)
+    elseif a.rule == @RULE_ifcmd(5)
+        return Expr(:continue)
     else
         throw(TranspileError("internal error in convert_ifcmd"))
     end
@@ -1380,12 +1522,23 @@ function find_if_else(a::AstNode, i::Int, env::AstEnv)
 end
 
 #push to arg list, and push to arginit
-function convert_procargs!(arglist::Vector{Symbol}, body::Expr, a::AstNode, env::AstEnv)
-    @assert 0 < a.rule - @RULE_procargs(0) < 100
-    if a.rule == @RULE_procargs(1) || a.rule == @RULE_procargs(3)
+function convert_procarglist!(arglist::Vector{Symbol}, body::Expr, a::AstNode, env::AstEnv)
+    @assert 0 < a.rule - @RULE_procarglist(0) < 100
+    if a.rule == @RULE_procarglist(1)
+        for i in a.child
+            convert_procarg!(arglist, body, i, env)
+        end
+    else
+        throw(TranspileError("internal error in convert_procarglist"))
+    end
+end
+
+function convert_procarg!(arglist::Vector{Symbol}, body::Expr, a::AstNode, env::AstEnv)
+    @assert 0 < a.rule - @RULE_procarg(0) < 100
+    if a.rule == @RULE_procarg(1)
         b = a.child[2]
         if b.rule == @RULE_extendedid(1)
-            s::String = b.child[1]
+            s = b.child[1]::String
             !haskey(env.locals, s) || throw(TranspileError("duplicate argument name"))
             if a.child[1] == 419
                 env.locals[s] = Int
@@ -1395,20 +1548,27 @@ function convert_procargs!(arglist::Vector{Symbol}, body::Expr, a::AstNode, env:
             push!(arglist, Symbol(s))
             push!(body.args, Expr(:(=), Symbol(s), coerce_for_assign(env.locals[s], Symbol(s))))
         else
-            throw(TranspileError("internal error in convert_procargs"))
+            throw(TranspileError("internal error in convert_procarg 1"))
         end
-        if a.rule == @RULE_procargs(3)
-            convert_procargs!(arglist, body, a.child[3], env)
+    elseif a.rule == @RULE_procarg(2)
+        b = a.child[2]
+        if b.rule == @RULE_extendedid(1)
+            s = b.child[1]::String
+            !haskey(env.locals, s) || throw(TranspileError("duplicate argument name"))
+            if a.child[1] == 441
+                env.locals[s] = List
+            else
+                throw(TranspileError("unknown argument type"))
+            end
+            push!(arglist, Symbol(s))
+            push!(body.args, Expr(:(=), Symbol(s), coerce_for_assign(env.locals[s], Symbol(s))))
+        else
+            throw(TranspileError("internal error in convert_procarg 2"))
         end
-    elseif a.rule == @RULE_procargs(2)
-        throw(TranspileError("undeclared argument types not allowed"))
-    elseif a.rule == @RULE_procargs(4)
-        throw(TranspileError("undeclared argument types not allowed"))
     else
-        throw(TranspileError("internal error in convert_procargs"))
+        throw(TranspileError("internal error in convert_procarg"))
     end
 end
-
 
 function convert_proccmd(a::AstNode, env::AstEnv)
     @assert 0 < a.rule - @RULE_proccmd(0) < 100
@@ -1416,8 +1576,14 @@ function convert_proccmd(a::AstNode, env::AstEnv)
         name = Symbol(a.child[1][6:end]) # TODO flimsy
         args = Symbol[]
         body = Expr(:block)
-        convert_procargs!(args, body, a.child[2], env)
-        join_blocks!(body, convert_lines(a.child[3], env))
+        newenv = AstEnv(0, Dict{String, Any}())
+        convert_procarglist!(args, body, a.child[2], newenv)
+        join_blocks!(body, convert_lines(a.child[3], newenv))
+        #procedures return nothing by default
+        if length(body.args) == 0 || !(body.args[length(body.args)] isa Expr) ||
+                                      body.args[length(body.args)].head != :return
+            push!(body.args, Expr(:return, :nothing))
+        end
         return Expr(:function, Expr(:call, name, args...), body)
     else
         throw(TranspileError("internal error in convert_proccmd"))
@@ -1554,5 +1720,4 @@ function singrun(fs::String)
 #        println(ex)
 #    end
 end
-
 

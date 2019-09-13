@@ -1,9 +1,31 @@
 proc f(int n)
 {
+    list l;
     for (int i = 1; i <= n; i++)
     {
-        i;
+        l[2 + i] = i;
     }
+    l[1] = l;
+    typeof(l);
+    return(l);
 };
 
-f(5);
+proc flatten(list l)
+{
+    list r;
+    for (int i = 1; i <= size(l); i++)
+    {
+        if (typeof(l[i]) == "list")
+        {
+            r = r + flatten(l[i]);
+        }
+        else
+        {
+            r = r + list(l[i]);
+        }
+    };
+    return(r);
+};
+
+list l = f(5); l;
+flatten(l);

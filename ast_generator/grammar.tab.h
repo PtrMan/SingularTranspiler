@@ -129,10 +129,7 @@ extern int yydebug;
     PARAMETER = 339,
     QUIT_CMD = 340,
     SYSVAR = 341,
-    UMINUS = 342,
-    JULIA_WHILE_CMD = 343,
-    JULIA_SPLICE_CMD = 344,
-    JULIA_PUSHBACK_CMD = 345
+    UMINUS = 342
   };
 #endif
 

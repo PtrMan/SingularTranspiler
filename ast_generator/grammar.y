@@ -175,7 +175,8 @@ void exitrule_str(const char * s, const char * name);
 %type <tree> quote_end
 %type <tree> assume_start
 %type <tree> examplecmd
-%type <tree> procargs
+%type <tree> procarglist
+%type <tree> procarg
 
 
 /*%nonassoc '=' PLUSEQUAL DOTDOT*/
@@ -197,11 +198,6 @@ void exitrule_str(const char * s, const char * name);
 %left COLONCOLON
 %left '.'
 %left ARROW
-
-
-%token <i> JULIA_WHILE_CMD
-%token <i> JULIA_SPLICE_CMD
-%token <i> JULIA_PUSHBACK_CMD
 
 %%
 
@@ -1600,18 +1596,18 @@ proccmd:
                 exitrule_ex("proccmd -> PROC_DEF '(' ')' '{' lines '}'",$$);
             }
 
-        | PROC_DEF '(' procargs ')' '{' lines '}'
+        | PROC_DEF '(' procarglist ')' '{' lines '}'
             {
-                enterrule("proccmd -> PROC_DEF '(' procargs ')' '{' lines '}'");
+                enterrule("proccmd -> PROC_DEF '(' procarglist ')' '{' lines '}'");
                 $$ = astnode_make3(RULE_proccmd(3), aststring_make($1), $3, $6);
-                exitrule_ex("proccmd -> PROC_DEF '(' procargs ')' '{' lines '}'",$$);
+                exitrule_ex("proccmd -> PROC_DEF '(' procarglist ')' '{' lines '}'",$$);
             }
 
-        | PROC_DEF STRINGTOK '(' procargs ')' '{' lines '}'
+        | PROC_DEF STRINGTOK '(' procarglist ')' '{' lines '}'
             {
-                enterrule("proccmd -> PROC_DEF STRINGTOK '(' procargs ')' '{' lines '}'");
+                enterrule("proccmd -> PROC_DEF STRINGTOK '(' procarglist ')' '{' lines '}'");
                 $$ = astnode_make4(RULE_proccmd(4), aststring_make($1), aststring_make($2), $4, $7);
-                exitrule_ex("proccmd -> PROC_DEF STRINGTOK '(' procargs ')' '{' lines '}'",$$);
+                exitrule_ex("proccmd -> PROC_DEF STRINGTOK '(' procarglist ')' '{' lines '}'",$$);
             }
         ;
 
@@ -1647,25 +1643,42 @@ returncmd:
             }
         ;
 
-procargs:
+procarglist:
+        procarglist ',' procarg
+            {
+                enterrule("procarglist -> procarglist ',' procarg");
+                $$ = astnode_append($1, $3);
+                exitrule_ex("procarglist -> procarglist ',' procarg",$$);
+            }
+
+        | procarg
+            {
+                enterrule("procarglist -> procarg");
+                $$ = astnode_make1(RULE_procarglist(1), $1);
+                exitrule_ex("procarglist -> procarg",$$);
+            }
+        ;
+
+procarg:
         ROOT_DECL extendedid
             {
-                $$ = astnode_make2(RULE_procargs(1), astint_make($1), $2);
+                enterrule("procarg -> ROOT_DECL extendedid");
+                $$ = astnode_make2(RULE_procarg(1), astint_make($1), $2);
+                exitrule_ex("procarg -> ROOT_DECL extendedid",$$);
+            }
+
+        | ROOT_DECL_LIST extendedid
+            {
+                enterrule("procarg -> ROOT_DECL_LIST extendedid");
+                $$ = astnode_make2(RULE_procarg(2), astint_make($1), $2);
+                exitrule_ex("procarg -> ROOT_DECL_LIST extendedid",$$);
             }
 
         | extendedid
             {
-                $$ = astnode_make1(RULE_procargs(2), $1);
-            }
-
-        | ROOT_DECL extendedid ',' procargs
-            {
-                $$ = astnode_make3(RULE_procargs(3), astint_make($1), $2, $4);
-            }
-
-        | extendedid ',' procargs
-            {
-                $$ = astnode_make2(RULE_procargs(4), $1, $3);
+                enterrule("procarg -> extendedid");
+                $$ = astnode_make1(RULE_procarg(3), $1);
+                exitrule_ex("procarg -> extendedid",$$);
             }
         ;
 
