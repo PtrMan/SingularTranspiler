@@ -18,18 +18,23 @@ extern char * yytext;
 extern yy_size_t yyleng;
 extern int inerror;
 
-static char * dupyytext()
+static char * duplicate_string(const char * t)
 {
-    int i;
-    char* s;
-/*printf("len: %d  string: %s\n", yyleng, yytext);*/
-    s = (char*)malloc((yyleng + 1) * sizeof(char));
-    for (i = 0; i < yyleng; i++) {
-        s[i] = yytext[i];
-    }
-    s[yyleng] = '\0';
+    size_t n = strlen(t);
+    char * s = (char *) malloc(n + 1);
+    strcpy(s, t);
     return s;
 }
+
+static char * dupyytext()
+{
+    char* s;
+    if (yyleng>0) yytext[yyleng-1] = '\0';
+    s = (char*)malloc((yyleng + 1) * sizeof(char));
+    strncpy(s, (char *)yytext, yyleng);
+    return s;
+}
+
 
 static char * dupyytextNL()
 {
@@ -56,17 +61,18 @@ struct token_lookup_entry {
 };
 
 static struct token_lookup_entry token_lookup[] = {
-{"bigint",      361,    ROOT_DECL},
-{"bigintmat",   269,    BIGINTMAT_CMD},
-{"continue",    331,    CONTINUE_CMD},
-{"int",         419,    ROOT_DECL},
-{"intmat",      270,    INTMAT_CMD},
-{"intvec",      424,    ROOT_DECL_LIST},
-{"list",        441,    ROOT_DECL_LIST},
-{"print",       478,    CMD_12},
-{"size",        378,    CMD_1},
-{"string",      508,    ROOT_DECL_LIST},
-{"typeof",      517,    CMD_1},
+{"bigint",      361,        ROOT_DECL},
+{"bigintmat",   269,        BIGINTMAT_CMD},
+{"continue",    331,        CONTINUE_CMD},
+{"int",         419,        ROOT_DECL},
+{"intmat",      270,        INTMAT_CMD},
+{"intvec",      424,        ROOT_DECL_LIST},
+{"list",        441,        ROOT_DECL_LIST},
+{"print",       478,        CMD_12},
+{"proc",        PROC_CMD,   PROC_CMD},
+{"size",        378,        CMD_1},
+{"string",      508,        ROOT_DECL_LIST},
+{"typeof",      517,        CMD_1},
 };
 
 
@@ -142,15 +148,11 @@ example[ \t\n]*          {
                            BEGIN(asstring);
                            return EXAMPLE_CMD;
                          }
-
-proc[ \t]+{name}[ \t]*   {
-                           lvalp->name = dupyytext();
-//printf("returning PROC_DEF\n");
-                           return PROC_DEF;
-                         }
 <asstring>[^;\n]+        {
                            lvalp->name = dupyytext();
                            BEGIN(INITIAL);
+
+printf("SCANNER return STRINGTOK 1\n");
                            return STRINGTOK;
                          }
 <asstring>;              {
@@ -168,6 +170,7 @@ proc[ \t]+{name}[ \t]*   {
                            if (blocknest)
                            {
                              lvalp->name = dupyytext();
+printf("SCANNER return STRINGTOK 2\n");
                              return STRINGTOK;
                            }
                          }
@@ -176,6 +179,7 @@ proc[ \t]+{name}[ \t]*   {
                            {
                              BEGIN(INITIAL);
                              lvalp->name = dupyytext();
+printf("SCANNER return STRINGTOK 3\n");
                              return STRINGTOK;
                            }
                            yymore();
@@ -194,10 +198,12 @@ proc[ \t]+{name}[ \t]*   {
 <bracket>[ \t\n]*        { ; }
 <bracket>[^\(\), \t\n]*  {
                            lvalp->name = dupyytext();
+printf("SCANNER return STRINGTOK 4\n");
                            return STRINGTOK;
                          }
 <bracket>\"[^\"]*\"      {
                            lvalp->name = dupyytext();
+printf("SCANNER return STRINGTOK 5\n");
                            return STRINGTOK;
                          }
 <bracket>")"             {
@@ -221,6 +227,7 @@ proc[ \t]+{name}[ \t]*   {
 <string>"\""             {
                            char * s;
                            BEGIN(INITIAL);
+                           s = lvalp->name = dupyytext();
                            s = lvalp->name = dupyytext();
                            while (*yytext)
                            {
@@ -248,42 +255,44 @@ proc[ \t]+{name}[ \t]*   {
 "->"                     { return ARROW; }
 \\                       { return '\\'; }
 newline                  {
-                           lvalp->name = dupyytext();
+                           lvalp->name = duplicate_string("\n");
+printf("SCANNER return STRINGTOK 7\n");
                            return STRINGTOK;
                          }
 {integer}                {
-                           lvalp->name = dupyytext();
+                           lvalp->name = duplicate_string(yytext);
                            return INT_CONST;
                          }
 {integer}\/{integer}     {
-                           lvalp->name = dupyytext();
+                           lvalp->name = duplicate_string(yytext);
                            return RINGVAR;
                          }
 \$                        {
-                           lvalp->name = dupyytext();
+                           lvalp->name = duplicate_string(yytext);
                            return INT_CONST;
                          }
 (quit|exit)[ \t\n]*;     {
                            printf("quit\n");
-                           lvalp->name = dupyytext();
+                           lvalp->name = duplicate_string(yytext);
                             return INT_CONST;
                          }
 
 {rgvars}|{realnum}       {
-                           lvalp->name = dupyytext();
+                           lvalp->name = duplicate_string(yytext);
                            return RINGVAR;
                          }
 [0-9]+\."e"[+-][0-9]+    {
-                           lvalp->name = dupyytext();
+                           lvalp->name = duplicate_string(yytext);
                            return RINGVAR;
                          }
 [0-9]+\./[^\.]           {
-                           lvalp->name = dupyytext();
+                           lvalp->name = duplicate_string(yytext);
                            return RINGVAR;
                          }
 
 ({parname}|{name})      {
                            /* {name} */
+
 
                             int rc = 0;
                             for (int i = 0; i < sizeof(token_lookup)/sizeof(struct token_lookup_entry); i++)
@@ -303,7 +312,7 @@ printf("SCANNER %s RETURNING %d with lvalp->i = %d\n", (char *)yytext, rc, lvalp
                                 return rc;
                             }
 
-                            lvalp->name = dupyytext();
+                            lvalp->name = duplicate_string(yytext);
 printf("SCANNER %s RETURNING %d (UNKNOWN_IDENT)\n", (char *)yytext, UNKNOWN_IDENT);
 
                             return UNKNOWN_IDENT;

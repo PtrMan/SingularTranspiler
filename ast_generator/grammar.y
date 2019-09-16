@@ -1582,32 +1582,32 @@ forcmd:
         ;
 
 proccmd:
-        PROC_CMD extendedid '{' lines '}'
+        PROC_CMD UNKNOWN_IDENT '{' lines '}'
             {
                 enterrule("proccmd -> PROC_CMD extendedid '{' lines '}'");
-                $$ = astnode_make2(RULE_proccmd(1), $2, $4);
+                $$ = astnode_make2(RULE_proccmd(1), aststring_make($2), $4);
                 exitrule("proccmd -> PROC_CMD extendedid '{' lines '}'");
             }
 
-        | PROC_DEF '(' ')' '{' lines '}'
+        | PROC_CMD UNKNOWN_IDENT '(' ')' '{' lines '}'
             {
-                enterrule("proccmd -> PROC_DEF '(' ')' '{' lines '}'");
-                $$ = astnode_make2(RULE_proccmd(2), aststring_make($1), $5);
-                exitrule_ex("proccmd -> PROC_DEF '(' ')' '{' lines '}'",$$);
+                enterrule("proccmd -> PROC_CMD extendedid '(' ')' '{' lines '}'");
+                $$ = astnode_make2(RULE_proccmd(2), aststring_make($2), $6);
+                exitrule_ex("proccmd -> PROC_CMD extendedid '(' ')' '{' lines '}'",$$);
             }
 
-        | PROC_DEF '(' procarglist ')' '{' lines '}'
+        | PROC_CMD UNKNOWN_IDENT '(' procarglist ')' '{' lines '}'
             {
-                enterrule("proccmd -> PROC_DEF '(' procarglist ')' '{' lines '}'");
-                $$ = astnode_make3(RULE_proccmd(3), aststring_make($1), $3, $6);
-                exitrule_ex("proccmd -> PROC_DEF '(' procarglist ')' '{' lines '}'",$$);
+                enterrule("proccmd -> PROC_CMD extendedid '(' procarglist ')' '{' lines '}'");
+                $$ = astnode_make3(RULE_proccmd(3), aststring_make($2), $4, $7);
+                exitrule_ex("proccmd -> PROC_CMD extendedid '(' procarglist ')' '{' lines '}'",$$);
             }
 
-        | PROC_DEF STRINGTOK '(' procarglist ')' '{' lines '}'
+        | PROC_CMD UNKNOWN_IDENT STRINGTOK '(' procarglist ')' '{' lines '}'
             {
-                enterrule("proccmd -> PROC_DEF STRINGTOK '(' procarglist ')' '{' lines '}'");
-                $$ = astnode_make4(RULE_proccmd(4), aststring_make($1), aststring_make($2), $4, $7);
-                exitrule_ex("proccmd -> PROC_DEF STRINGTOK '(' procarglist ')' '{' lines '}'",$$);
+                enterrule("proccmd -> PROC_CMD extendedid STRINGTOK '(' procarglist ')' '{' lines '}'");
+                $$ = astnode_make4(RULE_proccmd(4), aststring_make($2), aststring_make($3), $5, $8);
+                exitrule_ex("proccmd -> PROC_CMD extendedid STRINGTOK '(' procarglist ')' '{' lines '}'",$$);
             }
         ;
 
@@ -1674,10 +1674,17 @@ procarg:
                 exitrule_ex("procarg -> ROOT_DECL_LIST extendedid",$$);
             }
 
+        | PROC_CMD extendedid
+            {
+                enterrule("procarg -> PROC_CMD extendedid");
+                $$ = astnode_make1(RULE_procarg(3), $2);
+                exitrule_ex("procarg -> PROC_CMD extendedid",$$);
+            }
+
         | extendedid
             {
                 enterrule("procarg -> extendedid");
-                $$ = astnode_make1(RULE_procarg(3), $1);
+                $$ = astnode_make1(RULE_procarg(4), $1);
                 exitrule_ex("procarg -> extendedid",$$);
             }
         ;

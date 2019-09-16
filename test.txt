@@ -1,31 +1,28 @@
 proc f(int n)
 {
-    list l;
-    for (int i = 1; i <= n; i++)
+    "**** f(" + string(n) + ") called";
+    if (n > 0)
     {
-        l[2 + i] = i;
+        return(g(n - 1));
     }
-    l[1] = l;
-    typeof(l);
-    return(l);
 };
 
-proc flatten(list l)
+if (1)
 {
-    list r;
-    for (int i = 1; i <= size(l); i++)
+    proc g(int n)
     {
-        if (typeof(l[i]) == "list")
+        "**** g(" + string(n) + ") called";
+        if (n > 0)
         {
-            r = r + flatten(l[i]);
-        }
-        else
-        {
-            r = r + list(l[i]);
+            return(f(n - 1));
         }
     };
-    return(r);
 };
 
-list l = f(5); l;
-flatten(l);
+proc h(proc f, int n)
+{
+    "**** h(" + string(f) + ", " + string(n) + ") called";
+    return(f(n));
+};
+
+h(g, 6);
