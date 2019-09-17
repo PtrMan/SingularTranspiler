@@ -1,0 +1,29 @@
+proc f(int n)
+{
+    "**** f(" + string(n) + ") called";
+    if (n > 0)
+    {
+        return(g(n - 1));
+    }
+};
+
+if (1)
+{
+    proc g(int n)
+    {
+        "**** g(" + string(n) + ") called";
+        if (n > 0)
+        {
+            return(f(n - 1));
+        }
+    };
+};
+
+proc h(proc f, int n)
+{
+    "**** h(" + string(f) + ", " + string(n) + ") called";
+    return(f(n));
+};
+
+proc p = g;
+typeof(h(p, 6));

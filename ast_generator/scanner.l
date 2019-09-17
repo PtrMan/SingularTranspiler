@@ -18,14 +18,6 @@ extern char * yytext;
 extern yy_size_t yyleng;
 extern int inerror;
 
-static char * duplicate_string(const char * t)
-{
-    size_t n = strlen(t);
-    char * s = (char *) malloc(n + 1);
-    strcpy(s, t);
-    return s;
-}
-
 static char * dupyytext()
 {
     char* s;
@@ -61,18 +53,64 @@ struct token_lookup_entry {
 };
 
 static struct token_lookup_entry token_lookup[] = {
-{"bigint",      361,        ROOT_DECL},
-{"bigintmat",   269,        BIGINTMAT_CMD},
-{"continue",    331,        CONTINUE_CMD},
-{"int",         419,        ROOT_DECL},
-{"intmat",      270,        INTMAT_CMD},
-{"intvec",      424,        ROOT_DECL_LIST},
-{"list",        441,        ROOT_DECL_LIST},
-{"print",       478,        CMD_12},
-{"proc",        PROC_CMD,   PROC_CMD},
-{"size",        378,        CMD_1},
-{"string",      508,        ROOT_DECL_LIST},
-{"typeof",      517,        CMD_1},
+{"alias",           ALIAS_CMD,          PARAMETER},
+{"align",           ALIGN_CMD,          CMD_2},
+{"and",             '&' ,               LOGIC_OP},
+{"apply",           APPLY,              APPLY},
+{"attrib",          ATTRIB_CMD,         CMD_123},
+{"bareiss",         BAREISS_CMD,        CMD_13},
+{"betti",           BETTI_CMD,          CMD_12},
+{"bigint",          BIGINT_CMD,         ROOT_DECL},
+{"bigintmat",       BIGINTMAT_CMD,      BIGINTMAT_CMD},
+{"branchTo",        BRANCHTO_CMD,       CMD_M},
+{"break",           BREAK_CMD,          BREAK_CMD},
+{"breakpoint",      BREAKPOINT_CMD ,    CMD_M},
+{"char",            CHARACTERISTIC_CMD, CMD_1},
+{"char_series",     CHAR_SERIES_CMD,    CMD_1},
+{"charstr",         CHARSTR_CMD,        CMD_1},
+{"chinrem",         CHINREM_CMD,        CMD_2},
+{"cleardenom",      CONTENT_CMD,        CMD_1},
+{"close",           CLOSE_CMD,          CMD_1},
+{"coef",            COEF_CMD,           CMD_M},
+{"coeffs",          COEFFS_CMD,         CMD_23},
+{"continue",        CONTINUE_CMD,       CONTINUE_CMD},
+{"contract",        CONTRACT_CMD,       CMD_2},
+{"convhull",        NEWTONPOLY_CMD,     CMD_1},
+{"cring",           CRING_CMD,          ROOT_DECL},
+{"dbprint",         DBPRINT_CMD,        CMD_M},
+{"def",             DEF_CMD,            ROOT_DECL},
+{"defined",         DEFINED_CMD,        CMD_1},
+{"deg",             DEG_CMD,            CMD_12},
+{"degree",          DEGREE_CMD,         CMD_1},
+{"delete",          DELETE_CMD,         CMD_2},
+{"denominator",     DENOMINATOR_CMD,    CMD_1},
+{"det",             DET_CMD,            CMD_12},
+{"diff",            DIFF_CMD,           CMD_2},
+{"dim",             DIM_CMD,            CMD_12},
+{"div",             INTDIV_CMD,         MULDIV_OP},
+{"division",        DIVISION_CMD,       CMD_M},
+{"dump",            DUMP_CMD,           CMD_1},
+{"extgcd",          EXTGCD_CMD,         CMD_2},
+{"ideal",           IDEAL_CMD,          RING_DECL_LIST},
+{"if",              IF_CMD,             IF_CMD},
+{"imap",            IMAP_CMD,           CMD_2},
+{"impart",          IMPART_CMD,         CMD_1},
+{"importfrom",      IMPORTFROM_CMD,     CMD_2},
+{"indepSet",        INDEPSET_CMD,       CMD_12},
+{"insert",          INSERT_CMD,         CMD_23},
+{"int",             INT_CMD,            ROOT_DECL},
+{"interpolation",   INTERPOLATE_CMD,    CMD_2},
+{"interred",        INTERRED_CMD,       CMD_1},
+{"intersect",       INTERSECT_CMD,      CMD_M},
+{"intmat",          INTMAT_CMD,         INTMAT_CMD},
+{"intvec",          INTVEC_CMD,         ROOT_DECL_LIST},
+{"newstruct",       NEWSTRUCT_CMD,      NEWSTRUCT_CMD},
+{"list",            LIST_CMD,           ROOT_DECL_LIST},
+{"print",           PRINT_CMD,          CMD_12},
+{"proc",            PROC_CMD,           PROC_CMD},
+{"size",            COUNT_CMD,          CMD_1},
+{"string",          STRING_CMD,         ROOT_DECL_LIST},
+{"typeof",          TYPEOF_CMD,         CMD_1},
 };
 
 
@@ -151,8 +189,6 @@ example[ \t\n]*          {
 <asstring>[^;\n]+        {
                            lvalp->name = dupyytext();
                            BEGIN(INITIAL);
-
-printf("SCANNER return STRINGTOK 1\n");
                            return STRINGTOK;
                          }
 <asstring>;              {
@@ -170,7 +206,6 @@ printf("SCANNER return STRINGTOK 1\n");
                            if (blocknest)
                            {
                              lvalp->name = dupyytext();
-printf("SCANNER return STRINGTOK 2\n");
                              return STRINGTOK;
                            }
                          }
@@ -179,7 +214,6 @@ printf("SCANNER return STRINGTOK 2\n");
                            {
                              BEGIN(INITIAL);
                              lvalp->name = dupyytext();
-printf("SCANNER return STRINGTOK 3\n");
                              return STRINGTOK;
                            }
                            yymore();
@@ -198,12 +232,10 @@ printf("SCANNER return STRINGTOK 3\n");
 <bracket>[ \t\n]*        { ; }
 <bracket>[^\(\), \t\n]*  {
                            lvalp->name = dupyytext();
-printf("SCANNER return STRINGTOK 4\n");
                            return STRINGTOK;
                          }
 <bracket>\"[^\"]*\"      {
                            lvalp->name = dupyytext();
-printf("SCANNER return STRINGTOK 5\n");
                            return STRINGTOK;
                          }
 <bracket>")"             {
@@ -256,7 +288,6 @@ printf("SCANNER return STRINGTOK 5\n");
 \\                       { return '\\'; }
 newline                  {
                            lvalp->name = duplicate_string("\n");
-printf("SCANNER return STRINGTOK 7\n");
                            return STRINGTOK;
                          }
 {integer}                {
@@ -272,7 +303,6 @@ printf("SCANNER return STRINGTOK 7\n");
                            return INT_CONST;
                          }
 (quit|exit)[ \t\n]*;     {
-                           printf("quit\n");
                            lvalp->name = duplicate_string(yytext);
                             return INT_CONST;
                          }
@@ -297,7 +327,6 @@ printf("SCANNER return STRINGTOK 7\n");
                             int rc = 0;
                             for (int i = 0; i < sizeof(token_lookup)/sizeof(struct token_lookup_entry); i++)
                             {
-//printf("SCANNER LOOKING AT %s\n", token_lookup_entry[i].name);
                                 if (strcmp(yytext, token_lookup[i].name) == 0)
                                 {
                                     lvalp->i = token_lookup[i].tokval;
@@ -305,17 +334,24 @@ printf("SCANNER return STRINGTOK 7\n");
                                     break;
                                 }
                             }
-
                             if (rc)
                             {
-printf("SCANNER %s RETURNING %d with lvalp->i = %d\n", (char *)yytext, rc, lvalp->i);
+printf("SCANNER: %s RETURN %d with lpval->i = %d\n", yytext, rc, lvalp->i);
                                 return rc;
                             }
 
                             lvalp->name = duplicate_string(yytext);
-printf("SCANNER %s RETURNING %d (UNKNOWN_IDENT)\n", (char *)yytext, UNKNOWN_IDENT);
-
-                            return UNKNOWN_IDENT;
+                            if (   stringlist_has(&prev_newstruct_names, lvalp->name)
+                                || stringlist_has(&new_newstruct_names, lvalp->name))
+                            {
+printf("SCANNER: %s RETURN (ROOT_DECL_NEWSTRUCT)\n", yytext);
+                                return ROOT_DECL_NEWSTRUCT;
+                            }
+                            else
+                            {
+printf("SCANNER: %s RETURN (UNKNOWN_IDENT)\n", yytext);
+                                return UNKNOWN_IDENT;
+                            }
                         }
 
 .                       {

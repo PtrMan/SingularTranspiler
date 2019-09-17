@@ -138,7 +138,7 @@ end
 
 function (x::Unknown)(v...)
     if haskey(sGlobalProc, x.name)
-        return sGlobalProc[x.name](v...)
+        return sGlobalProc[x.name].func(v...)
     else
         return Unknown(x.name * "(" * join([scast2string(i).string for i in v], ",") * ")")
     end
@@ -306,11 +306,11 @@ end
 
 function sconvert2intvec(a::Tuple{Vararg{SingularType}})
     v = Int[]
-    for e in a
-        if e isa IntVec
-            append!(v, e.vector)
+    for i in a
+        if i isa IntVec
+            append!(v, i.vector)
         else
-            push!(v, sconvert2int(e))
+            push!(v, sconvert2int(i))
         end
     end
     return IntVec(v)
@@ -698,7 +698,7 @@ stypeof(::NiString)     = NiString("string")
 stypeof(::_IntVec)      = NiString("intvec")
 stypeof(::_IntMat)      = NiString("intmat")
 stypeof(::_BigIntMat)   = NiString("bigintmat")
-stypeof(::_List)        = NiString("list\"") # TODO fix lexer
+stypeof(::_List)        = NiString("list")
 
 function ssize(a::Int)
     return Int(a != 0)
@@ -814,15 +814,15 @@ spower(a::BigInt, b::BigInt) = a ^ b
 sinc(a::Int) = Base.checked_add(a, 1)
 sinc(a::BigInt) = a + 1
 
-function sinc(a)
-    error("cannot increment")
+function sinc(a...)
+    error("cannot increment $a")
 end
 
 sdec(a::Int) = Base.checked_sub(b, 1)
 sdec(a::BigInt) = b - 1
 
-function sdec(a)
-    error("cannot decrement")
+function sdec(a...)
+    error("cannot decrement $a")
 end
 
 
@@ -875,7 +875,8 @@ mutable struct AstEnv
 end
 
 sGlobalEnv = AstEnv(false, Dict{String, Any}())
-sGlobalProc = Dict{String, Function}()
+sGlobalProc = Dict{String, Proc}()
+sGlobalNewStructNames = Array{String}[]
 
 Base.showerror(io::IO, er::TranspileError) = print(io, "transpilation error: ", er.name)
 
@@ -925,6 +926,279 @@ macro RULE_parametercmd(i)        ;return(4300 + i); end
 macro RULE_returncmd(i)           ;return(4400 + i); end
 macro RULE_procarglist(i)         ;return(4500 + i); end
 macro RULE_procarg(i)             ;return(4600 + i); end
+
+@enum CMDS begin
+  DOTDOT = 258
+  EQUAL_EQUAL
+  GE
+  LE
+  MINUSMINUS
+  NOT
+  NOTEQUAL
+  PLUSPLUS
+  COLONCOLON
+  ARROW
+  GRING_CMD
+  BIGINTMAT_CMD
+  INTMAT_CMD
+  PROC_CMD
+  RING_CMD
+  BEGIN_RING
+  BUCKET_CMD
+  IDEAL_CMD
+  MAP_CMD
+  MATRIX_CMD
+  MODUL_CMD
+  NUMBER_CMD
+  POLY_CMD
+  RESOLUTION_CMD
+  SMATRIX_CMD
+  VECTOR_CMD
+  BETTI_CMD
+  E_CMD
+  FETCH_CMD
+  FREEMODULE_CMD
+  KEEPRING_CMD
+  IMAP_CMD
+  KOSZUL_CMD
+  MAXID_CMD
+  MONOM_CMD
+  PAR_CMD
+  PREIMAGE_CMD
+  VAR_CMD
+  VALTVARS
+  VMAXDEG
+  VMAXMULT
+  VNOETHER
+  VMINPOLY
+  END_RING
+  CMD_1
+  CMD_2
+  CMD_3
+  CMD_12
+  CMD_13
+  CMD_23
+  CMD_123
+  CMD_M
+  ROOT_DECL
+  ROOT_DECL_LIST
+  RING_DECL
+  RING_DECL_LIST
+  EXAMPLE_CMD
+  EXPORT_CMD
+  HELP_CMD
+  KILL_CMD
+  LIB_CMD
+  LISTVAR_CMD
+  SETRING_CMD
+  TYPE_CMD
+  STRINGTOK
+  INT_CONST
+  UNKNOWN_IDENT
+  RINGVAR
+  PROC_DEF
+  APPLY
+  ASSUME_CMD
+  BREAK_CMD
+  CONTINUE_CMD
+  ELSE_CMD
+  EVAL
+  QUOTE
+  FOR_CMD
+  IF_CMD
+  SYS_BREAK
+  WHILE_CMD
+  RETURN
+  PARAMETER
+  QUIT_CMD
+  SYSVAR
+  UMINUS
+
+  ALIAS_CMD = 1000
+  ALIGN_CMD
+  ATTRIB_CMD
+  BAREISS_CMD
+  BIGINT_CMD
+  BRANCHTO_CMD
+  BRACKET_CMD
+  BREAKPOINT_CMD
+  CHARACTERISTIC_CMD
+  CHARSTR_CMD
+  CHAR_SERIES_CMD
+  CHINREM_CMD
+  CMATRIX_CMD
+  CNUMBER_CMD
+  CPOLY_CMD
+  CLOSE_CMD
+  COEFFS_CMD
+  COEF_CMD
+  COLS_CMD
+  CONTENT_CMD
+  CONTRACT_CMD
+  COUNT_CMD
+  CRING_CMD
+  DBPRINT_CMD
+  DEF_CMD
+  DEFINED_CMD
+  DEG_CMD
+  DEGREE_CMD
+  DELETE_CMD
+  DENOMINATOR_CMD
+  DET_CMD
+  DIFF_CMD
+  DIM_CMD
+  DIVISION_CMD
+  DUMP_CMD
+  ELIMINATION_CMD
+  END_GRAMMAR
+  ENVELOPE_CMD
+  ERROR_CMD
+  EXECUTE_CMD
+  EXPORTTO_CMD
+  EXTGCD_CMD
+  FAC_CMD
+  FAREY_CMD
+  FIND_CMD
+  FACSTD_CMD
+  FMD_CMD
+  FRES_CMD
+  FWALK_CMD
+  FGLM_CMD
+  FGLMQUOT_CMD
+  FINDUNI_CMD
+  GCD_CMD
+  GETDUMP_CMD
+  HIGHCORNER_CMD
+  HILBERT_CMD
+  HOMOG_CMD
+  HRES_CMD
+  IMPART_CMD
+  IMPORTFROM_CMD
+  INDEPSET_CMD
+  INSERT_CMD
+  INT_CMD
+  INTDIV_CMD
+  INTERPOLATE_CMD
+  INTERRED_CMD
+  INTERSECT_CMD
+  INTVEC_CMD
+  IS_RINGVAR
+  JACOB_CMD
+  JANET_CMD
+  JET_CMD
+  KBASE_CMD
+  KERNEL_CMD
+  KILLATTR_CMD
+  KRES_CMD
+  LAGSOLVE_CMD
+  LEAD_CMD
+  LEADCOEF_CMD
+  LEADEXP_CMD
+  LEADMONOM_CMD
+  LIFTSTD_CMD
+  LIFT_CMD
+  LINK_CMD
+  LIST_CMD
+  LOAD_CMD
+  LRES_CMD
+  LU_CMD
+  LUI_CMD
+  LUS_CMD
+  MEMORY_CMD
+  MINBASE_CMD
+  MINOR_CMD
+  MINRES_CMD
+  MODULO_CMD
+  MONITOR_CMD
+  MPRES_CMD
+  MRES_CMD
+  MSTD_CMD
+  MULTIPLICITY_CMD
+  NAMEOF_CMD
+  NAMES_CMD
+  NCALGEBRA_CMD
+  NC_ALGEBRA_CMD
+  NEWTONPOLY_CMD
+  NPARS_CMD
+  NUMERATOR_CMD
+  NVARS_CMD
+  ORD_CMD
+  OPEN_CMD
+  OPPOSE_CMD
+  OPPOSITE_CMD
+  OPTION_CMD
+  ORDSTR_CMD
+  PACKAGE_CMD
+  PARDEG_CMD
+  PARENT_CMD
+  PARSTR_CMD
+  PFAC_CMD
+  PRIME_CMD
+  PRINT_CMD
+  PRUNE_CMD
+  QHWEIGHT_CMD
+  QRING_CMD
+  QRDS_CMD
+  QUOTIENT_CMD
+  RANDOM_CMD
+  RANK_CMD
+  READ_CMD
+  REDUCE_CMD
+  REGULARITY_CMD
+  REPART_CMD
+  RES_CMD
+  RESERVEDNAME_CMD
+  RESTART_CMD
+  RESULTANT_CMD
+  RINGLIST_CMD
+  RING_LIST_CMD
+  ROWS_CMD
+  SBA_CMD
+  SIMPLEX_CMD
+  SIMPLIFY_CMD
+  SLIM_GB_CMD
+  SORTVEC_CMD
+  SQR_FREE_CMD
+  SRES_CMD
+  STATUS_CMD
+  STD_CMD
+  STRING_CMD
+  SUBST_CMD
+  SYSTEM_CMD
+  SYZYGY_CMD
+  TENSOR_CMD
+  TEST_CMD
+  TRANSPOSE_CMD
+  TRACE_CMD
+  TWOSTD_CMD
+  TYPEOF_CMD
+  UNIVARIATE_CMD
+  UNLOAD_CMD
+  URSOLVE_CMD
+  VANDER_CMD
+  VARIABLES_CMD
+  VARSTR_CMD
+  VDIM_CMD
+  WAIT1ST_CMD
+  WAITALL_CMD
+  WEDGE_CMD
+  WEIGHT_CMD
+  WRITE_CMD
+
+  VECHO
+  VCOLMAX
+  VTIMER
+  VRTIMER
+  TRACE
+  VOICE
+  VSHORTOUT
+  VPRINTLEVEL
+
+  MAX_TOK
+end
+
+
+
 
 function astprint(a::Int, indent::Int)
     print(" "^indent);
@@ -1055,8 +1329,8 @@ function convert_extendedid(a::AstNode, env::AstEnv)
 end
 
 function we_known_splat_is_trivial(a)
-    if a isa Expr && a.head == :call &&
-       length(a.args) == 2 && a.args[1] == :sref && a.args[2] isa Symbol
+    if a isa Expr && a.head == :call && length(a.args) == 2 &&
+                         a.args[1] == :sref && a.args[2] isa Symbol
         return true
     elseif a isa Int
         return true
@@ -1138,10 +1412,10 @@ function convert_elemexpr(a::AstNode, env::AstEnv)
         return convert_stringexpr(a.child[1], env)
     elseif a.rule == @RULE_elemexpr(13)
         t = a.child[1]::Int
-        if t == 441
+        if t == Int(LIST_CMD)
             b = convert_exprlist(a.child[2], env)::Array{Any}
             return Expr(:call, :scast2list, make_tuple_array_nocopy(b)...)
-        elseif t == 508
+        elseif t == Int(STRING_CMD)
             b = convert_exprlist(a.child[2], env)::Array{Any}
             return Expr(:call, :scast2string, make_tuple_array_nocopy(b)...)
         else
@@ -1149,16 +1423,16 @@ function convert_elemexpr(a::AstNode, env::AstEnv)
         end
     elseif a.rule == @RULE_elemexpr(18)
         t = a.child[1]::Int
-        if t == 517
+        if t == Int(TYPEOF_CMD)
             return Expr(:call, :stypeof, convert_expr(a.child[2], env))
-        elseif t == 378
+        elseif t == Int(COUNT_CMD)
             return Expr(:call, :ssize, convert_expr(a.child[2], env))
         else
-            throw(TranspileError("internal error in convert_elemexpr 19"))
+            throw(TranspileError("internal error in convert_elemexpr 18"))
         end
     elseif a.rule == @RULE_elemexpr(19)
         t = a.child[1]::Int
-        if t == 478
+        if t == Int(PRINT_CMD)
             return Expr(:call, :sprint, convert_expr(a.child[2], env))
         else
             throw(TranspileError("internal error in convert_elemexpr 19"))
@@ -1273,27 +1547,35 @@ function convert_returncmd(a::AstNode, env::AstEnv)
     end
 end
 
-coerce_for_assign(::Type{Proc}, a::Proc)        = a
-coerce_for_assign(::Type{Proc}, a::Symbol)      = Expr(:call, :sconvert2proc, a)
-coerce_for_assign(::Type{Proc}, a::Expr)        = Expr(:call, :sconvert2proc, a)
-coerce_for_assign(::Type{Unknown}, a::Expr)     = Expr(:call, :sconvert2poly, a)
-coerce_for_assign(::Type{Int}, a::Int)          = a
-coerce_for_assign(::Type{Int}, a::Expr)         = Expr(:call, :sconvert2int, a)
-coerce_for_assign(::Type{Int}, a::Symbol)       = Expr(:call, :sconvert2int, a)
-coerce_for_assign(::Type{BigInt}, a::BigInt)    = a
-coerce_for_assign(::Type{BigInt}, a::Int)       = BigInt(a)
-coerce_for_assign(::Type{BigInt}, a::Expr)      = Expr(:call, :sconvert2bigint, a)
-coerce_for_assign(::Type{NiString}, a::NiString)= a
-coerce_for_assign(::Type{NiString}, a::Expr)    = Expr(:call, :sconvert2string, a)
-coerce_for_assign(::Type{IntVec}, a::IntVec)    = a
-coerce_for_assign(::Type{IntVec}, a::Expr)      = Expr(:call, :sconvert2intvec, a)
-coerce_for_assign(::Type{IntMat}, a::Expr)      = Expr(:call, :sconvert2intmat, a)
-coerce_for_assign(::Type{BigIntMat}, a::Expr)   = Expr(:call, :sconvert2bigintmat, a)
-coerce_for_assign(::Type{List}, a::List)        = a
-coerce_for_assign(::Type{List}, a::Symbol)      = Expr(:call, :sconvert2list, a)
-coerce_for_assign(::Type{List}, a::Expr)        = Expr(:call, :sconvert2list, a)
+coerce_for_assign(::Type{Proc}, a::Proc)            = a
+coerce_for_assign(::Type{Proc}, a::Symbol)          = Expr(:call, :sconvert2proc, a)
+coerce_for_assign(::Type{Proc}, a::Expr)            = Expr(:call, :sconvert2proc, a)
+coerce_for_assign(::Type{Int}, a::Int)              = a
+coerce_for_assign(::Type{Int}, a::Symbol)           = Expr(:call, :sconvert2int, a)
+coerce_for_assign(::Type{Int}, a::Expr)             = Expr(:call, :sconvert2int, a)
+coerce_for_assign(::Type{BigInt}, a::BigInt)        = a
+coerce_for_assign(::Type{BigInt}, a::Int)           = BigInt(a)
+coerce_for_assign(::Type{BigInt}, a::Symbol)        = Expr(:call, :sconvert2bigint, a)
+coerce_for_assign(::Type{BigInt}, a::Expr)          = Expr(:call, :sconvert2bigint, a)
+coerce_for_assign(::Type{NiString}, a::NiString)    = a
+coerce_for_assign(::Type{NiString}, a::Symbol)      = Expr(:call, :sconvert2string, a)
+coerce_for_assign(::Type{NiString}, a::Expr)        = Expr(:call, :sconvert2string, a)
+coerce_for_assign(::Type{IntVec}, a::IntVec)        = a
+coerce_for_assign(::Type{IntVec}, a::Symbol)        = Expr(:call, :sconvert2intvec, a)
+coerce_for_assign(::Type{IntVec}, a::Expr)          = Expr(:call, :sconvert2intvec, a)
+coerce_for_assign(::Type{IntMat}, a::IntMat)        = a
+coerce_for_assign(::Type{IntMat}, a::Symbol)        = Expr(:call, :sconvert2intmat, a)
+coerce_for_assign(::Type{IntMat}, a::Expr)          = Expr(:call, :sconvert2intmat, a)
+coerce_for_assign(::Type{BigIntMat}, a::BigIntMat)  = a
+coerce_for_assign(::Type{BigIntMat}, a::Symbol)     = Expr(:call, :sconvert2bigintmat, a)
+coerce_for_assign(::Type{BigIntMat}, a::Expr)       = Expr(:call, :sconvert2bigintmat, a)
+coerce_for_assign(::Type{List}, a::List)            = a
+coerce_for_assign(::Type{List}, a::Symbol)          = Expr(:call, :sconvert2list, a)
+coerce_for_assign(::Type{List}, a::Expr)            = Expr(:call, :sconvert2list, a)
 
 
+stype_string(::Type{Unknown})   = "?unknown type?"
+stype_string(::Type{Proc})      = "proc"
 stype_string(::Type{Int})       = "int"
 stype_string(::Type{BigInt})    = "bigint"
 stype_string(::Type{NiString})  = "string"
@@ -1451,31 +1733,31 @@ function convert_declare_ip_variable!(vars::Array{AstNode}, a::AstNode, env::Ast
             tcode = a.child[1]::Int
             prepend_declared_var!(vars, a.child[2])
             r = Expr(:block)
-            if tcode == 419
+            if tcode == Int(INT_CMD)
                 for m in vars
                     s::String = m.child[1].child[1]
                     add_declaration!(env, s, Int)
                     push!(r.args, Expr(:(=), Symbol(s), coerce_for_assign(Int, 0)))
                 end
-            elseif tcode == 361
+            elseif tcode == Int(BIGINT_CMD)
                 for m in vars
                     s::String = m.child[1].child[1]
                     add_declaration!(env, s, BigInt)
                     push!(r.args, Expr(:(=), Symbol(s), coerce_for_assign(BigInt, 0)))
                 end
-            elseif tcode == 508
+            elseif tcode == Int(STRING_CMD)
                 for m in vars
                     s::String = m.child[1].child[1]
                     add_declaration!(env, s, NiString)
                     push!(r.args, Expr(:(=), Symbol(s), coerce_for_assign(NiString, NiString(""))))
                 end
-            elseif tcode == 424
+            elseif tcode == Int(INTVEC_CMD)
                 for m in vars
                     s::String = m.child[1].child[1]
                     add_declaration!(env, s, IntVec)
                     push!(r.args, Expr(:(=), Symbol(s), coerce_for_assign(IntVec, IntVec(Int[0]))))
                 end
-            elseif tcode == 441
+            elseif tcode == Int(LIST_CMD)
                 for m in vars
                     s::String = m.child[1].child[1]
                     add_declaration!(env, s, List)
@@ -1516,6 +1798,15 @@ function convert_declare_ip_variable!(vars::Array{AstNode}, a::AstNode, env::Ast
         elseif a.rule == @RULE_declare_ip_variable(7)
             prepend_declared_var!(vars, a.child[2])
             a = a.child[1]
+        elseif a.rule == @RULE_declare_ip_variable(8)
+            prepend_declared_var!(vars, a.child[1])
+            r = Expr(:block)
+            for m in vars
+                s::String = m.child[1].child[1]
+                add_declaration!(env, s, Proc)
+                push!(r.args, Expr(:(=), Symbol(s), coerce_for_assign(Int, 0)))
+            end
+            return r
         else
             throw(TranspileError("internal error in convert_declare_ip_variable"))
         end
@@ -1648,8 +1939,10 @@ function convert_procarg!(arglist::Vector{Symbol}, body::Expr, a::AstNode, env::
         if b.rule == @RULE_extendedid(1)
             s = b.child[1]::String
             !haskey(env.locals, s) || throw(TranspileError("duplicate argument name"))
-            if a.child[1] == 419
+            if a.child[1] == Int(INT_CMD)
                 env.locals[s] = Int
+            elseif a.child[1] == Int(BIGINT_CMD)
+                env.locals[s] = BigInt
             else
                 throw(TranspileError("unknown argument type"))
             end
@@ -1661,7 +1954,7 @@ function convert_procarg!(arglist::Vector{Symbol}, body::Expr, a::AstNode, env::
         if b.rule == @RULE_extendedid(1)
             s = b.child[1]::String
             !haskey(env.locals, s) || throw(TranspileError("duplicate argument name"))
-            if a.child[1] == 441
+            if a.child[1] == Int(LIST_CMD)
                 env.locals[s] = List
             else
                 throw(TranspileError("unknown argument type"))
@@ -1704,7 +1997,7 @@ function convert_proccmd(a::AstNode, env::AstEnv)
         r = Expr(:block, Expr(:function, Expr(:call, internalfunc, args...), body))
         push!(r.args, Expr(:(=), Symbol(s), Expr(:call, :Proc, internalfunc, s)))
         if !env.in_proc
-            push!(r.args, Expr(:call, :setindex!, :sGlobalProc, internalfunc, s))
+            push!(r.args, Expr(:call, :setindex!, :sGlobalProc, Symbol(s), s))
         end
         return r
     else
@@ -1822,27 +2115,28 @@ function convert_toplines(a::AstNode, env::AstEnv)
 end
 
 
-function singrun(fs::String)
+function singrun(s::String)
 
-    s = read(fs, String);
-    ast = ccall((:singular_parse, "libsingularparse"), Any, (Cstring, ), s)
+    ast = ccall((:singular_parse, "libsingularparse"), Any,
+                    (Cstring, Ptr{Ptr{UInt8}}, UInt),
+                    s, sGlobalNewStructNames, length(sGlobalNewStructNames))
 
     println("singular ast:")
     astprint(ast, 0)
 
-    t0 = time()
 #    try
+#=
+        t0 = time()
         expr = convert_toplines(ast, sGlobalEnv)
         t1 = time()
-        println("elapsed time: ", t1-t0, " seconds")
+        println("conversion time: ", t1 - t0, " seconds")
         println("--------expr--------")
         for i in expr.args; println(i); end;
         println("--------------------")
         eval(expr)
+=#
 #    catch ex
 #        println(ex)
 #    end
 end
-
-
 

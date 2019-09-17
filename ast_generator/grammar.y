@@ -105,14 +105,12 @@ void exitrule_str(const char * s, const char * name);
 %token <i> CMD_23
 %token <i> CMD_123
 %token <i> CMD_M
+%token <i> NEWSTRUCT_CMD
+%token <name> ROOT_DECL_NEWSTRUCT
 %token <i> ROOT_DECL
-        /* put variables of this type into the idroot list */
 %token <i> ROOT_DECL_LIST
-        /* put variables of this type into the idroot list */
 %token <i> RING_DECL
-        /* put variables of this type into the currRing list */
 %token <i> RING_DECL_LIST
-        /* put variables of this type into the currRing list */
 %token <i> EXAMPLE_CMD
 %token <i> EXPORT_CMD
 %token <i> HELP_CMD
@@ -673,6 +671,15 @@ elemexpr:
                 exitrule("elemexpr -> CMD_12 '(' expr ',' expr ')'");
             }
 
+        | NEWSTRUCT_CMD '(' STRINGTOK ',' STRINGTOK ')'
+            {
+                enterrule("elemexpr -> NEWSTRUCT_CMD '(' STRINGTOK ',' STRINGTOK ')'");
+                if (!stringlist_has(&prev_newstruct_names, $3))
+                    stringlist_insert(&new_newstruct_names, $3);
+                $$ = astnode_make2(RULE_elemexpr(99), aststring_make($3), aststring_make($5));
+                exitrule("elemexpr -> NEWSTRUCT_CMD '(' STRINGTOK ',' STRINGTOK ')'");
+            }
+
         | CMD_23 '(' expr ',' expr ')'
             {
                 enterrule("elemexpr -> CMD_23 '(' expr ',' expr ')'");
@@ -1092,6 +1099,13 @@ declare_ip_variable:
                 exitrule_ex("declare_ip_variable -> ROOT_DECL elemexpr",$$);
             }
 
+        | ROOT_DECL_NEWSTRUCT elemexpr
+            {
+                enterrule("declare_ip_variable -> ROOT_DECL elemexpr");
+                $$ = astnode_make2(RULE_declare_ip_variable(99), aststring_make($1), $2);
+                exitrule_ex("declare_ip_variable -> ROOT_DECL elemexpr",$$);
+            }
+
         | ROOT_DECL_LIST elemexpr
             {
                 enterrule("declare_ip_variable -> ROOT_DECL_LIST elemexpr");
@@ -1137,7 +1151,7 @@ declare_ip_variable:
         | PROC_CMD elemexpr
             {
                 enterrule("declare_ip_variable -> PROC_CMD elemexpr");
-                $$ = astnode_make2(RULE_declare_ip_variable(8), astint_make($1), $2);
+                $$ = astnode_make1(RULE_declare_ip_variable(8), $2);
                 exitrule("declare_ip_variable -> PROC_CMD elemexpr");
             }
         ;
