@@ -262,6 +262,14 @@ jl_value_t * singular_parse(
     }
     else
     {
+        astree * strings = astnode_make0(-1);
+        stringlist_node * n = new_newstruct_names.first;
+        while (n != NULL)
+        {
+            strings = astnode_append(strings, aststring_make(duplicate_string(n->string)));
+            n = n->next;
+        }
+        retv = astnode_make2(-1, retv, strings);
         r = make_jl_tree(retv);
         ast_clear(retv);
     }

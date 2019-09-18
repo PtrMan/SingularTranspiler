@@ -213,6 +213,49 @@ sref(a::BigIntMat) = a.matrix
 sref(a::ListData) = a
 sref(a::List) = a.list
 
+########### default constructors ##############################################
+# each type has a sdefaultconstructor_something which cannot fail
+
+function sempty_proc()
+    error("empty proc called")
+end
+
+function sdefaultconstructor_unknown() # hmm, probably won't be used
+    return Unknown("")
+end
+
+function sdefaultconstructor_proc()
+    return Proc(sempty_proc, "empty proc")
+end
+
+function sdefaultconstructor_int()
+    return Int(0)
+end
+
+function sdefaultconstructor_bigint()
+    return BigInt(0)
+end
+
+function sdefaultconstructor_string()
+    return NiString("")
+end
+
+function sdefaultconstructor_intvec()
+    return IntVec(Int[])
+end
+
+function sdefaultconstructor_intmat()
+    return BigIntMat(zeros(Int, 1, ))
+end
+
+function sdefaultconstructor_bigintmat()
+    return BigIntMat(zeros(BigInt, 1, ))
+end
+
+function sdefaultconstructor_list()
+    return List(ListData(Any[]))
+end
+
 
 ########### type conversions ##################################################
 # each sconvert2something returns an object of type something, usually for an assignment
@@ -449,6 +492,10 @@ end
 
 ############ printing ##########################################################
 
+function _sindenting_print(a::Nothing, indent::Int)
+    return ""
+end
+
 function _sindenting_print(a::Unknown, indent::Int)
     return " "^indent * "UNKNOWN IDENTIFIER " * a.name
 end
@@ -489,11 +536,12 @@ function _sindenting_print(a::_List, indent::Int)
     A = sref(a).data
     for i in 1:length(A)
         s *= " "^indent * "[" * string(i) * "]:\n"
-        if A[i] != nothing
-            s *= _sindenting_print(A[i], indent + 3)
-            if i < length(A)
-                s *= "\n"
-            end
+        if A[i] isa Nothing
+            continue
+        end
+        s *= _sindenting_print(A[i], indent + 3)
+        if i < length(A)
+            s *= "\n"
         end
     end
     return s
@@ -511,11 +559,7 @@ function sprint(::Nothing)
     return ""
 end
 
-function sprint(a::_SingularType)
-    return NiString(_sindenting_print(a, 0))
-end
-
-function sprint(a::Tuple{Vararg{SingularType}})
+function sprint(a)
     return NiString(_sindenting_print(a, 0))
 end
 
@@ -524,23 +568,14 @@ function _sprintout(::Nothing)
     return
 end
 
-function _sprintout(a::_SingularType)
-    println(_sindenting_print(a, 0))
-end
-
-function _sprintout(a::Tuple{Vararg{SingularType}})
+function _sprintout(a)
     println(_sindenting_print(a, 0))
 end
 
 # type ...; will call _sprintouttype
-function _sprintouttype(a::_SingularType)
+function _sprintouttype(a)
     println("add correct type printing here")
 end
-
-function _sprintouttype(a::Tuple{Vararg{SingularType}})
-    println("add correct type printing here")
-end
-
 
 ########### mutatingish operations #############################################
 
@@ -876,7 +911,7 @@ end
 
 sGlobalEnv = AstEnv(false, Dict{String, Any}())
 sGlobalProc = Dict{String, Proc}()
-sGlobalNewStructNames = Array{String}[]
+sGlobalNewStructNames = String[]
 
 Base.showerror(io::IO, er::TranspileError) = print(io, "transpilation error: ", er.name)
 
@@ -1305,7 +1340,7 @@ function astprint(a::AstNode, indent::Int)
     elseif 4600 < a.rule < 4700
         print("RULE_procarg ")
     else
-        println("!!unknown rule")
+        print("unknown ")
     end
     println(a.rule);
     for i in 1:length(a.child)
@@ -1359,15 +1394,15 @@ end
 #return array generating SingularTypes, can construct a singular tuple with Expr(:tuple, ...)
 #return is Array{Any}
 function make_tuple_array_copy(a::Array{Any})
-    b = Any[]
+    r = Any[]
     for i in 1:length(a)
         if a[i] isa Expr && a[i].head == :tuple
-            append!(b, a[i].args)   # each of a[i].args should already be copied and splatted
+            append!(r, a[i].args)   # each of a[i].args should already be copied and splatted
         else
-            push!(b, Expr(:(...), Expr(:call, :scopy, a[i]))) # TODO opt: splat can be avoided somtimes
+            push!(r, Expr(:(...), Expr(:call, :scopy, a[i]))) # TODO opt: splat can be avoided somtimes
         end
     end
-    return b
+    return r
 end
 
 
@@ -1377,19 +1412,187 @@ function convert_stringexpr(a::AstNode, env::AstEnv)
 end
 
 
+const newstructprefix    = "NewStruct_"
+const newstructrefprefix = "NewStructRef_"
+
+function convert_typestring_tosymbol(s::String)
+    if s == "int"
+        return :Int
+    elseif s == "bigint"
+        return :BigInt
+    elseif s == "intvec"
+        return :Intvec
+    elseif s == "intmat"
+        return :IntMat
+    elseif s == "bigintmat"
+        return :BigIntMat
+    else
+        return Symbol(newstructprefix * s)
+    end
+end
+
+function convert_newstruct_decl(newtypename::String, args::String)
+
+println("convert_newstruct_decl")
+println("newtypename: ", newtypename)
+println("       args: ", args)
+
+    sp = split(args, ",")   
+
+println("         sp: ", sp)
+
+    sp2 = [filter!(x->x != "", split(i," ")) for i in sp]
+
+println("        sp2: ", sp2)
+
+    newreftype  = Symbol(newstructrefprefix * newtypename)
+    newtype     = Symbol(newstructprefix * newtypename)
+
+    r = Expr(:block)
+
+    # struct definition
+    b = Expr(:block)
+    for i in sp2
+        length(i) == 2 || throw(TranspileError("invalid newstruct"))
+        push!(b.args, Expr(:(::), Symbol(i[2]), convert_typestring_tosymbol(String(i[1]))))
+    end
+    push!(r.args, Expr(:struct, true, newreftype, b))
+
+    b = Expr(:block, Expr(:(::), :data, newreftype))
+    push!(r.args, Expr(:struct, false, newtype, b))
+
+    # deepcopy
+    dpcpi = Expr(:(.), :Base, QuoteNode(:deepcopy_internal))
+    idict = Expr(:(::), :dict, :IdDict)
+    c = Expr(:call, newreftype)
+    for i in sp2
+        push!(c.args, Expr(:call, :deepcopy, Expr(:(.), :f, QuoteNode(Symbol(i[2])))))
+    end
+    push!(r.args, Expr(:function, Expr(:call, dpcpi, Expr(:(::), :f, newreftype), idict),
+        Expr(:return, c)
+    ))
+
+    push!(r.args, Expr(:function, Expr(:call, dpcpi, Expr(:(::), :f, newtype), idict),
+        Expr(:return,
+            Expr(:call, newtype,
+                Expr(:call, :deepcopy,
+                    Expr(:(.), :f, QuoteNode(:data))
+                )
+            )
+        )
+    ))
+
+    # scopy
+    push!(r.args, Expr(:function, Expr(:call, :scopy, Expr(:(::), :f, newreftype)),
+        Expr(:return, Expr(:call, newtype, Expr(:call, :deepcopy, :f)))
+    ))
+
+    push!(r.args, Expr(:function, Expr(:call, :scopy, Expr(:(::), :f, newtype)),
+        Expr(:return, :f)
+    ))
+
+    # sref
+    push!(r.args, Expr(:function, Expr(:call, :sref, Expr(:(::), :f, newreftype)),
+        Expr(:return, :f)
+    ))
+
+    push!(r.args, Expr(:function, Expr(:call, :sref, Expr(:(::), :f, newtype)),
+        Expr(:return, Expr(:(.), :f, QuoteNode(:data)))
+    ))
+
+    # sconvert2something
+    push!(r.args, Expr(:function, Expr(:call, Symbol("sconvert2"*newtypename), Expr(:(::), :f, newreftype)),
+        Expr(:return, Expr(:call, newtype, Expr(:call, :deepcopy, :f)))
+    ))
+
+    push!(r.args, Expr(:function, Expr(:call, Symbol("sconvert2"*newtypename), Expr(:(::), :f, newtype)),
+        Expr(:return, :f)
+    ))
+
+    push!(r.args, Expr(:function, Expr(:call, Symbol("sconvert2"*newtypename), :f),
+        Expr(:call, :error, "cannot convert to a " * newtypename * " from ", :f)
+    ))
+
+    # scast2something
+    c = Expr(:call, Symbol("scast2"*newtypename))
+    d = Expr(:call, newreftype)
+    for i in sp2
+        push!(c.args, Symbol(i[2]))
+        push!(d.args, Expr(:call, Symbol("sconvert2"*i[1]), Symbol(i[2])))
+    end
+    push!(r.args, Expr(:function, c, Expr(:return, Expr(:call, newtype, d))))
+
+    push!(r.args, Expr(:function, Expr(:call, Symbol("scast2"*newtypename), Expr(:(...), :f)),
+        Expr(:call, :error, "cannot construct a " * newtypename * " from ", :f)
+    ))
+
+    # sdefaultconstructor_something
+    d = Expr(:call, newreftype)
+    for i in sp2
+        push!(d.args, Expr(:call, Symbol("sdefaultconstructor_"*i[1])))
+    end
+    push!(r.args, Expr(:function, Expr(:call, Symbol("sdefaultconstructor_"*newtypename)),
+        Expr(:return, Expr(:call, newtype, d))
+    ))    
+
+    # sset  - all errors should be handled by sconvert2something
+    push!(r.args, Expr(:function, Expr(:call, :sset,
+                                        Expr(:(::), :a, Expr(:curly, :Union, newtype, newreftype)),
+                                        :b),
+        Expr(:return, Expr(:call, Symbol("sconvert2"*newtypename), :b))
+    ))
+
+    # print
+    b = Expr(:block, Expr(:(=), :s, ""))
+    for i in 1:length(sp2)
+        push!(b.args, Expr(:(*=), :s, Expr(:call, :(*), Expr(:call, :(^), " ", :indent), "." * sp2[i][2] * ":\n")))
+        push!(b.args, Expr(:(*=), :s, Expr(:call, :_sindenting_print, Expr(:(.), :f, QuoteNode(Symbol(sp2[i][2]))), Expr(:call, :(+), :indent, 3))))
+        if i < length(sp2)
+            push!(b.args, Expr(:(*=), :s, "\n"))
+        end
+    end
+    push!(b.args, Expr(:return, :s))
+    push!(r.args, Expr(:function, Expr(:call, :_sindenting_print,
+                                                Expr(:(::), :f, newreftype),
+                                                Expr(:(::), :indent, :Int)),
+        b
+    ))
+
+    push!(r.args, Expr(:function, Expr(:call, :_sindenting_print,
+                                                Expr(:(::), :f, newtype),
+                                                Expr(:(::), :indent, :Int)),
+        Expr(:return, Expr(:call, :_sindenting_print, Expr(:(.), :f, QuoteNode(:data)), :indent))
+    ))
+
+    # stypeof
+    push!(r.args, Expr(:function, Expr(:call, :stypeof,
+                                        Expr(:(::), :f, Expr(:curly, :Union, newtype, newreftype))),
+        Expr(:return, Expr(:call, :NiString, newtypename))
+    ))
+
+    push!(r.args, :nothing)
+    return r
+end
+
 function convert_elemexpr(a::AstNode, env::AstEnv)
     @assert 0 < a.rule - @RULE_elemexpr(0) < 100
     if a.rule == @RULE_elemexpr(2)
         return convert_extendedid(a.child[1], env)
-    elseif a.rule == @RULE_elemexpr(8)
-        x = parse(BigInt, a.child[1])
-        if typemin(Int) <= x <= typemax(Int)
-            return Int(x)
-        else
-            return x
+    elseif a.rule == @RULE_elemexpr(4)
+        c = a.child[2]
+        c.child[1].rule == @RULE_extendedid(1) || throw(TranspileError("rhs of dot is no good"))
+        s = c.child[1].child[1]::String
+        b = convert_expr(a.child[1], env)
+        if !(b isa Expr && b.head == :call && length(b.args) == 2 && b.args[1] == :sref)
+            b = Expr(:call, :sref, b)
         end
-    elseif a.rule == @RULE_elemexpr(6)
-        b = convert_exprlist(a.child[2], env)::Array{Any}
+        return Expr(:(.), b, QuoteNode(Symbol(s)))
+    elseif a.rule == @RULE_elemexpr(6) || a.rule == @RULE_elemexpr(5)
+        if a.rule == @RULE_elemexpr(6)
+            b = convert_exprlist(a.child[2], env)::Array{Any}
+        else
+            b = Any[]
+        end
         c = a.child[1]
         if c.child[1].rule == @RULE_extendedid(1)
             s = c.child[1].child[1]::String
@@ -1408,6 +1611,13 @@ function convert_elemexpr(a::AstNode, env::AstEnv)
             end
         end
         return Expr(:call, convert_elemexpr(c, env), make_tuple_array_nocopy(b)...)
+    elseif a.rule == @RULE_elemexpr(8)
+        x = parse(BigInt, a.child[1])
+        if typemin(Int) <= x <= typemax(Int)
+            return Int(x)
+        else
+            return x
+        end
     elseif a.rule == @RULE_elemexpr(10)
         return convert_stringexpr(a.child[1], env)
     elseif a.rule == @RULE_elemexpr(13)
@@ -1438,6 +1648,8 @@ function convert_elemexpr(a::AstNode, env::AstEnv)
             throw(TranspileError("internal error in convert_elemexpr 19"))
         end
         return convert_expr(a.child(2))
+    elseif a.rule == @RULE_elemexpr(99)
+        return convert_newstruct_decl(a.child[1], a.child[2])
     elseif a.rule == @RULE_elemexpr(37)
         b = convert_exprlist(a.child[1], env)
         if length(b) == 1
@@ -1446,7 +1658,7 @@ function convert_elemexpr(a::AstNode, env::AstEnv)
             return Expr(:tuple, make_tuple_array_copy(b)...)
         end
     else
-        throw(TranspileError("internal error in convert_elemexpr"))
+        throw(TranspileError("internal error in convert_elemexpr"*string(a.rule)))
     end  
 end
 
@@ -1574,6 +1786,7 @@ coerce_for_assign(::Type{List}, a::Symbol)          = Expr(:call, :sconvert2list
 coerce_for_assign(::Type{List}, a::Expr)            = Expr(:call, :sconvert2list, a)
 
 
+stype_string(s::Symbol)         = String(s)
 stype_string(::Type{Unknown})   = "?unknown type?"
 stype_string(::Type{Proc})      = "proc"
 stype_string(::Type{Int})       = "int"
@@ -1649,7 +1862,7 @@ function convert_assign(a::AstNode, env::AstEnv)
                 push_assignment!(r, lhs[1], Expr(:tuple, make_tuple_array_copy(rhs)...), env)
             end
         else
-            t = gensym();
+            t = gensym()
             push!(r.args, Expr(:(=), t, Expr(:tuple, make_tuple_array_copy(rhs)...)))
             push!(r.args, Expr(:call, :schecktuplelength, t, length(lhs))) # TODO opt: runtime check can sometimes be avoided
             for i in 1:length(lhs.child)
@@ -1766,6 +1979,16 @@ function convert_declare_ip_variable!(vars::Array{AstNode}, a::AstNode, env::Ast
             else
                 throw(TranspileError("internal error in convert_declare_ip_variable 1"))
             end   
+            return r
+        elseif a.rule == @RULE_declare_ip_variable(99)
+            typ = a.child[1]::String
+            prepend_declared_var!(vars, a.child[2])
+            r = Expr(:block)
+            for m in vars
+                s::String = m.child[1].child[1]
+                add_declaration!(env, s, Symbol(newstructprefix * typ))
+                push!(r.args, Expr(:(=), Symbol(s), Expr(:call, Symbol("sdefaultconstructor_" * typ))))
+            end 
             return r
         elseif a.rule == @RULE_declare_ip_variable(5) || a.rule == @RULE_declare_ip_variable(6)
             if a.rule == @RULE_declare_ip_variable(5)
@@ -1885,12 +2108,13 @@ end
 
 #return false, 0 or true, ifexpr
 function find_if_else(a::AstNode, i::Int, env::AstEnv)
+
     if i >= length(a.child)
         return false, 0
     end
 
     b = a.child[i]
-    if b.rule != @RULE_pprompt(1)
+    if b.rule != @RULE_pprompt(1) && b.rule != @RULE_top_pprompt(1)
         return false, 0
     end
     b = b.child[1]
@@ -1903,7 +2127,7 @@ function find_if_else(a::AstNode, i::Int, env::AstEnv)
     end
 
     c = a.child[i + 1]
-    if c.rule != @RULE_pprompt(1)
+    if c.rule != @RULE_pprompt(1) && c.rule != @RULE_top_pprompt(1)
         return false, 0
     end
     c = c.child[1]
@@ -1980,15 +2204,20 @@ end
 
 function convert_proccmd(a::AstNode, env::AstEnv)
     @assert 0 < a.rule - @RULE_proccmd(0) < 100
-    if a.rule == @RULE_proccmd(3)
+    if a.rule == @RULE_proccmd(3) || a.rule == @RULE_proccmd(2)
         s = a.child[1]::String
         add_declaration!(env, s, Proc)
         internalfunc = procname_to_func(s)
         args = Symbol[]
         body = Expr(:block)
         newenv = AstEnv(true, Dict{String, Any}())
-        convert_procarglist!(args, body, a.child[2], newenv)
-        join_blocks!(body, convert_lines(a.child[3], newenv))
+        if a.rule == @RULE_proccmd(3)
+            convert_procarglist!(args, body, a.child[2], newenv)
+            join_blocks!(body, convert_lines(a.child[3], newenv))
+        else
+            # empty args
+            join_blocks!(body, convert_lines(a.child[2], newenv))
+        end
         #procedures return nothing by default
         if length(body.args) == 0 || !(body.args[length(body.args)] isa Expr) ||
                                       body.args[length(body.args)].head != :return
@@ -2098,8 +2327,10 @@ end
 
 # return is always a toplevel
 function convert_toplines(a::AstNode, env::AstEnv)
+println("convert_toplines called")
+
     add_proc_declarations!(env, a)
-    t = Expr(:toplevel)
+    r = Expr(:toplevel)
     i = 1
     while i <= length(a.child)
         have_if_else, b = find_if_else(a, i, env)
@@ -2108,10 +2339,10 @@ function convert_toplines(a::AstNode, env::AstEnv)
         else
             b = convert_top_pprompt(a.child[i], env)
         end
-        block_append!(t, b)
+        block_append!(r, b)
         i += 1
     end
-    return t
+    return r
 end
 
 
@@ -2121,22 +2352,26 @@ function singrun(s::String)
                     (Cstring, Ptr{Ptr{UInt8}}, UInt),
                     s, sGlobalNewStructNames, length(sGlobalNewStructNames))
 
-    println("singular ast:")
-    astprint(ast, 0)
+    if ast isa String
+        println("syntax error: $ast")
+    else
+        println("new strings: ", ast.child[2].child)
+        append!(sGlobalNewStructNames, ast.child[2].child)
+        println("sGlobalNewStructNames: ", sGlobalNewStructNames)
+        
 
-#    try
-#=
+        println("singular ast:")
+        astprint(ast.child[1], 0)
+
+
         t0 = time()
-        expr = convert_toplines(ast, sGlobalEnv)
+        expr = convert_toplines(ast.child[1], sGlobalEnv)
         t1 = time()
         println("conversion time: ", t1 - t0, " seconds")
-        println("--------expr--------")
+        println("--------transpiled code--------")
         for i in expr.args; println(i); end;
-        println("--------------------")
+        println("-------------------------------")
         eval(expr)
-=#
-#    catch ex
-#        println(ex)
-#    end
+    end
 end
 

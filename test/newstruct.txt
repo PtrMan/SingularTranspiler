@@ -13,6 +13,5 @@ else
 }
 
 foo f;
-f;
 typeof(f);
 typeof(f.a);
