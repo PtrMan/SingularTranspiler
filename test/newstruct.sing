@@ -1,0 +1,19 @@
+proc things_are_big()
+{
+    return(1);
+};
+
+if (things_are_big())
+{
+    newstruct("foo", "bigint a, bigint b");
+}
+else
+{
+    newstruct("foo", "int a, int b");
+}
+
+foo f;
+f.a = 1;
+f;
+typeof(f);
+typeof(f.a);

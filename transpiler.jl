@@ -583,6 +583,14 @@ end
 # Therefore, a = b is sometimes transpiled into a = sset(a, b)
 #   currently only for intmat and bigintmat a
 
+function sset(a::Int, b)
+    return sconvert2int(b)
+end
+
+function sset(a::BigInt, b)
+    return sconvert2bigint(b)
+end
+
 function sset(a::IntMat, b::_IntMat)
     return scopy(b)
 end
@@ -1432,19 +1440,8 @@ function convert_typestring_tosymbol(s::String)
 end
 
 function convert_newstruct_decl(newtypename::String, args::String)
-
-println("convert_newstruct_decl")
-println("newtypename: ", newtypename)
-println("       args: ", args)
-
-    sp = split(args, ",")   
-
-println("         sp: ", sp)
-
-    sp2 = [filter!(x->x != "", split(i," ")) for i in sp]
-
-println("        sp2: ", sp2)
-
+    sp = split(args, ",")
+    sp = [filter!(x->x != "", split(i," ")) for i in sp]
     newreftype  = Symbol(newstructrefprefix * newtypename)
     newtype     = Symbol(newstructprefix * newtypename)
 
@@ -1452,7 +1449,7 @@ println("        sp2: ", sp2)
 
     # struct definition
     b = Expr(:block)
-    for i in sp2
+    for i in sp
         length(i) == 2 || throw(TranspileError("invalid newstruct"))
         push!(b.args, Expr(:(::), Symbol(i[2]), convert_typestring_tosymbol(String(i[1]))))
     end
@@ -1465,7 +1462,7 @@ println("        sp2: ", sp2)
     dpcpi = Expr(:(.), :Base, QuoteNode(:deepcopy_internal))
     idict = Expr(:(::), :dict, :IdDict)
     c = Expr(:call, newreftype)
-    for i in sp2
+    for i in sp
         push!(c.args, Expr(:call, :deepcopy, Expr(:(.), :f, QuoteNode(Symbol(i[2])))))
     end
     push!(r.args, Expr(:function, Expr(:call, dpcpi, Expr(:(::), :f, newreftype), idict),
@@ -1516,7 +1513,7 @@ println("        sp2: ", sp2)
     # scast2something
     c = Expr(:call, Symbol("scast2"*newtypename))
     d = Expr(:call, newreftype)
-    for i in sp2
+    for i in sp
         push!(c.args, Symbol(i[2]))
         push!(d.args, Expr(:call, Symbol("sconvert2"*i[1]), Symbol(i[2])))
     end
@@ -1528,7 +1525,7 @@ println("        sp2: ", sp2)
 
     # sdefaultconstructor_something
     d = Expr(:call, newreftype)
-    for i in sp2
+    for i in sp
         push!(d.args, Expr(:call, Symbol("sdefaultconstructor_"*i[1])))
     end
     push!(r.args, Expr(:function, Expr(:call, Symbol("sdefaultconstructor_"*newtypename)),
@@ -1544,10 +1541,10 @@ println("        sp2: ", sp2)
 
     # print
     b = Expr(:block, Expr(:(=), :s, ""))
-    for i in 1:length(sp2)
-        push!(b.args, Expr(:(*=), :s, Expr(:call, :(*), Expr(:call, :(^), " ", :indent), "." * sp2[i][2] * ":\n")))
-        push!(b.args, Expr(:(*=), :s, Expr(:call, :_sindenting_print, Expr(:(.), :f, QuoteNode(Symbol(sp2[i][2]))), Expr(:call, :(+), :indent, 3))))
-        if i < length(sp2)
+    for i in 1:length(sp)
+        push!(b.args, Expr(:(*=), :s, Expr(:call, :(*), Expr(:call, :(^), " ", :indent), "." * sp[i][2] * ":\n")))
+        push!(b.args, Expr(:(*=), :s, Expr(:call, :_sindenting_print, Expr(:(.), :f, QuoteNode(Symbol(sp[i][2]))), Expr(:call, :(+), :indent, 3))))
+        if i < length(sp)
             push!(b.args, Expr(:(*=), :s, "\n"))
         end
     end
@@ -1811,7 +1808,7 @@ function push_assignment!(out::Expr, left::AstNode, right, env::AstEnv)
         a::AstNode = left.rule == @RULE_expr(2) ? left.child[1] : left
         @assert 0 < a.rule - @RULE_elemexpr(0) < 100
         if a.rule == @RULE_elemexpr(2)
-            b::AstNode = a.child[1]
+            b = a.child[1]::AstNode
             @assert 0 < b.rule - @RULE_extendedid(0) < 100
             if b.rule == @RULE_extendedid(1)
                 var::String = b.child[1]
@@ -1823,6 +1820,16 @@ function push_assignment!(out::Expr, left::AstNode, right, env::AstEnv)
             else
                 throw(TranspileError("cannot assign to lhs"))
             end
+        elseif a.rule == @RULE_elemexpr(4)
+            b = convert_expr(a.child[1], env)
+            c = a.child[2]
+            c.child[1].rule == @RULE_extendedid(1) || throw(TranspileError("rhs of dot in assignment is no good"))
+            s = c.child[1].child[1]::String
+            if !(b isa Expr && b.head == :call && length(b.args) == 2 && b.args[1] == :sref)
+                b = Expr(:call, :sref, b)
+            end
+            b = Expr(:(.), b, QuoteNode(Symbol(s)))
+            push!(out.args, Expr(:(=), b, Expr(:call, :sset, b, right)))
         else
             throw(TranspileError("cannot assign to lhs"))
         end
@@ -2358,11 +2365,9 @@ function singrun(s::String)
         println("new strings: ", ast.child[2].child)
         append!(sGlobalNewStructNames, ast.child[2].child)
         println("sGlobalNewStructNames: ", sGlobalNewStructNames)
-        
 
         println("singular ast:")
         astprint(ast.child[1], 0)
-
 
         t0 = time()
         expr = convert_toplines(ast.child[1], sGlobalEnv)

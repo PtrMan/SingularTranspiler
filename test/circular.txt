@@ -1,29 +1,44 @@
-proc f(int n)
-{
-    "**** f(" + string(n) + ") called";
-    if (n > 0)
-    {
-        return(g(n - 1));
-    }
-};
-
-if (1)
-{
-    proc g(int n)
-    {
-        "**** g(" + string(n) + ") called";
-        if (n > 0)
-        {
-            return(f(n - 1));
-        }
-    };
-};
-
-proc h(proc f, int n)
-{
-    "**** h(" + string(f) + ", " + string(n) + ") called";
-    return(f(n));
-};
-
-proc p = g;
-typeof(h(p, 6));
+--------transpiled code--------
+function ##f(n)
+    n = sconvert2int(n)
+    _sprintout(splus(splus(NiString("**** f("), scast2string(sref(n))), NiString(") called")))
+    if sasbool(sgreater(sref(n), 0))
+        return (Unknown("g"))(scopy(sminus(sref(n), 1))...)
+    end
+    return nothing
+end
+f = Proc(##f, "f")
+setindex!(sGlobalProc, f, "f")
+if sasbool(1)
+    function ##g(n)
+        n = sconvert2int(n)
+        _sprintout(splus(splus(NiString("**** g("), scast2string(sref(n))), NiString(") called")))
+        if sasbool(sgreater(sref(n), 0))
+            return ##f(scopy(sminus(sref(n), 1))...)
+        end
+        return nothing
+    end
+    g = Proc(##g, "g")
+    setindex!(sGlobalProc, g, "g")
+end
+function ##h(f, n)
+    f = sconvert2proc(f)
+    n = sconvert2int(n)
+    _sprintout(splus(splus(splus(splus(NiString("**** h("), scast2string(sref(f))), NiString(", ")), scast2string(sref(n))), NiString(") called")))
+    return f.func(sref(n))
+end
+h = Proc(##h, "h")
+setindex!(sGlobalProc, h, "h")
+p = 0
+p = sconvert2proc(sref(g))
+_sprintout(stypeof(##h(sref(p), 6)))
+-------------------------------
+**** h(proc g, 6) called
+**** g(6) called
+**** f(5) called
+**** g(4) called
+**** f(3) called
+**** g(2) called
+**** f(1) called
+**** g(0) called
+none
