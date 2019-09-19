@@ -52,7 +52,7 @@ procname_to_func(name::String) = Symbol("##"*name)
 # BigInt same
 
 #### singular type "string"
-# Singular splats all arguments by default, so we need ... in Julia
+# Singular splats all arguments inside () by default, so we need ... in Julia
 # The julia String is iterable, so we need a NiString as a non-iterable String container
 struct NiString
     string::String
@@ -146,34 +146,64 @@ end
 
 
 # copiers returning SingularType, usually so that we can assign it somewhere
+# we have to copy stuff, and sometimes the stuff to copy is allowed to be a tuple
+# scopy_allow_tuple will be called on stuff inside (), i.e. if the object (a,f(b),c)
+# needs to be construted, it might be constructed in julia as
+# tuple(a, scopy_allow_tuple(f(b))..., c)
+
+# if f(b) returns a tuple t, then scopy_allow_tuple(t) will simply return t
+# if f(b) returns a BigIntMat m, then scopy_allow_tuple(m) will simply return m and the iterator is trivial
+# if f(b) returns a Array{BigInt, 2} m, then scopy_allow_tuple(m) makes a deepcopy and returns a BigIntMat, whose iterator is trivial
+
+# scopy: copy with an error on tuples
+# scopy_allow_tuple: copy everything scopy can copy and also allow tuples through
+
+# scopy is probably only used internally since anything the transpiler would want to copy could be a tuple
 
 scopy(a::Nothing) = a
+scopy_allow_tuple(a::Nothing) = a
 
 scopy(a::Proc) = a
+scopy_allow_tuple(a::Proc) = a
 
 scopy(a::Unknown) = a
+scopy_allow_tuple(a::Unknown) = a
 
 scopy(a::Int) = a
+scopy_allow_tuple(a::Int) = a
 
 scopy(a::BigInt) = a
+scopy_allow_tuple(a::BigInt) = a
 
 scopy(a::NiString) = a
+scopy_allow_tuple(a::NiString) = a
 
 scopy(a::Vector{Int}) = IntVec(deepcopy(a))
 scopy(a::IntVec) = a
+scopy_allow_tuple(a::Vector{Int}) = IntVec(deepcopy(a))
+scopy_allow_tuple(a::IntVec) = a
 
 scopy(a::Array{Int, 2}) = IntMat(deepcopy(a))
 scopy(a::IntMat) = a
+scopy_allow_tuple(a::Array{Int, 2}) = IntMat(deepcopy(a))
+scopy_allow_tuple(a::IntMat) = a
 
 scopy(a::Array{BigInt, 2}) = BigIntMat(deepcopy(a))
 scopy(a::BigIntMat) = a
+scopy_allow_tuple(a::Array{BigInt, 2}) = BigIntMat(deepcopy(a))
+scopy_allow_tuple(a::BigIntMat) = a
 
 scopy(a::ListData) = List(deepcopy(a))
 scopy(a::List) = a
+scopy_allow_tuple(a::ListData) = List(deepcopy(a))
+scopy_allow_tuple(a::List) = a
 
-scopy(a::Tuple{Vararg{SingularType}}) = a
+scopy(a::Tuple{Vararg{Any}}) = error("internal error: The tuple $a leaked through. Please report this.")
+scopy_allow_tuple(a::Tuple{Vararg{Any}}) = a
 
 # copiers returning non SingularType, usually so that we can mutate it
+# only used internally for convenience
+# should not be output by transpiler
 
 sedit(a::Vector{Int}) = deepcopy(a)
 sedit(a::IntVec) = a.vector
@@ -347,7 +377,7 @@ function sconvert2intvec(a::Array{Int})
     return IntVec(deepcopy(a))
 end
 
-function sconvert2intvec(a::Tuple{Vararg{SingularType}})
+function sconvert2intvec(a::Tuple{Vararg{Any}})
     v = Int[]
     for i in a
         if i isa IntVec
@@ -374,7 +404,7 @@ function sconvert2intmat(a::Array{Int, 2})
     return IntMat(deepcopy(a))
 end
 
-function sconvert2intmat(a::Tuple{Vararg{SingularType}}, nrows::Int, ncols::Int)
+function sconvert2intmat(a::Tuple{Vararg{Any}}, nrows::Int, ncols::Int)
     if nrows <= 0 || ncols <= 0
         error("nrows and ncols must be positive")
     end
@@ -424,7 +454,7 @@ function sconvert2bigintmat(a::Array{BigInt, 2})
     return BigIntMat(deepcopy(a))
 end
 
-function sconvert2bigintmat(a::Tuple{Vararg{SingularType}}, nrows::Int, ncols::Int)
+function sconvert2bigintmat(a::Tuple{Vararg{Any}}, nrows::Int, ncols::Int)
     if nrows <= 0 || ncols <= 0
         error("nrows and ncols must be positive")
     end
@@ -474,7 +504,7 @@ function sconvert2list(a::ListData)
     return List(deepcopy(a))
 end
 
-function sconvert2list(a::Tuple{Vararg{SingularType}})
+function sconvert2list(a::Tuple{Vararg{Any}})
     return List(ListData(collect(a)))
 end
 
@@ -547,7 +577,7 @@ function _sindenting_print(a::_List, indent::Int)
     return s
 end
 
-function _sindenting_print(a::Tuple{Vararg{SingularType}}, indent::Int)
+function _sindenting_print(a::Tuple{Vararg{Any}}, indent::Int)
     s = ""
     for b in a
         s *= _sindenting_print(b, indent) * "\n"
@@ -565,7 +595,7 @@ end
 
 # the semicolon in Singular is the method to actually print something
 function _sprintout(::Nothing)
-    return
+    return  # we will probably be printing nothing often - very important to not print anything in this case!
 end
 
 function _sprintout(a)
@@ -581,7 +611,7 @@ end
 
 # in general the operation of the assignment a = b in Singular depends on the values of a and b
 # Therefore, a = b is sometimes transpiled into a = sset(a, b)
-#   currently only for intmat and bigintmat a
+#   currently only for intmat and bigintmat a, and when the type of a is not known at transpile time
 
 function sset(a::Int, b)
     return sconvert2int(b)
@@ -591,11 +621,11 @@ function sset(a::BigInt, b)
     return sconvert2bigint(b)
 end
 
-function sset(a::IntMat, b::_IntMat)
+function sset(a::_IntMat, b::_IntMat)
     return scopy(b)
 end
 
-function sset(a::IntMat, b::Tuple{Vararg{SingularType}})
+function sset(a::_IntMat, b::Tuple{Vararg{Any}})
     A = sedit(a)
     nrows, ncols = size(A)
     row_idx = col_idx = 1
@@ -613,16 +643,16 @@ function sset(a::IntMat, b::Tuple{Vararg{SingularType}})
     return IntMat(A)
 end
 
-function sset(a::IntMat, b)
+function sset(a::_IntMat, b)
     error("cannot assign to intmat")
 end
 
 
-function sset(a::BigIntMat, b::_BigIntMat)
+function sset(a::_BigIntMat, b::_BigIntMat)
     return scopy(b)
 end
 
-function sset(a::BigIntMat, b::Tuple{Vararg{SingularType}})
+function sset(a::_BigIntMat, b::Tuple{Vararg{Any}})
     A = sedit(a)
     nrows, ncols = size(A)
     row_idx = col_idx = 1
@@ -640,7 +670,7 @@ function sset(a::BigIntMat, b::Tuple{Vararg{SingularType}})
     return BigIntMat(A)
 end
 
-function sset(a::BigIntMat, b)
+function sset(a::_BigIntMat, b)
     error("cannot assign to bigintmat")
 end
 
@@ -706,6 +736,7 @@ function sinsert(a::_List, b, i::Int)
     else
         insert!(r.data, i + 1, bcopy)
     end
+    # TODO: remove nothings on the end?
     return List(r)
 end
 
@@ -713,19 +744,20 @@ end
 function sdelete(a::_List, i::Int)
     r = sedit(a);
     deleteat!(r.data, i)
+    # TODO: remove nothings on the end?
     return List(r)
 end
 
 ################ tuples ########################################################
 #
-# all splatting is done at transpile time
+# all splatting is done (hopefully!) at transpile time
 #function smaketuple(v...)
 #    g = (x isa Tuple ? x : (x,) for x in v)
 #    r = tuple(Iterators.flatten(g)...)
 #    return r
 #end
 
-function schecktuplelength(a::Tuple{Vararg{SingularType}}, n::Int)
+function schecktuplelength(a::Tuple{Vararg{Any}}, n::Int)
     length(a) == n || error("expected "*string(n)*" arguments for parallel assignment; got "*string(length(a)))
 end
 
@@ -774,31 +806,31 @@ function splus(a::_List, b::_List)
     return List(ListData(vcat(sedit(a).data, sedit(b).data)))
 end
 
-function splus(a::Tuple{Vararg{SingularType}}, b::_SingularType)
+function splus(a::Tuple{Vararg{Any}}, b::_SingularType)
     return Tuple(i == 1 ? splus(a[i], b) : a[i] for i in 1:length(a));
 end
 
-function splus(a::_SingularType, b::Tuple{Vararg{SingularType}})
+function splus(a::_SingularType, b::Tuple{Vararg{Any}})
     return Tuple(i == 1 ? splus(a, b[i]) : b[i] for i in 1:length(b));
 end
 
-function splus(a::Tuple{Vararg{SingularType}}, b::Tuple{Vararg{SingularType}})
+function splus(a::Tuple{Vararg{Any}}, b::Tuple{Vararg{Any}})
     return Tuple(splus(a[i], b[i]) for i in 1:min(length(a), length(b)));
 end
 
 function splus(a::_IntVec, b::_IntVec)
-    A = sref(a);
-    B = sref(b);
-    return IntVec([(i <= length(A) ? A[i] : 0) + (i <= length(B) ? B[i] : 0) for i in 1:max(length(A), length(B))]);
+    A = sref(a)
+    B = sref(b)
+    return IntVec([(i <= length(A) ? A[i] : 0) + (i <= length(B) ? B[i] : 0) for i in 1:max(length(A), length(B))])
 end
 
 function splus(a::_IntVec, b::Int)
-    A = sref(a);
+    A = sref(a)
     return IntVec([splus(A[i], b) for i in 1:length(A)])
 end
 
 function splus(a::Int, b::_IntVec)
-    B = sref(b);
+    B = sref(b)
     return IntVec([splus(a, B[i]) for i in 1:length(B)])
 end
 
@@ -1393,7 +1425,7 @@ function make_tuple_array_nocopy(a::Array{Any})
         elseif we_known_splat_is_trivial(a[i])
             push!(b, a[i])            
         else
-            push!(b, Expr(:(...), Expr(:call, :scopy, a[i])))
+            push!(b, Expr(:(...), Expr(:call, :scopy_allow_tuple, a[i])))
         end
     end
     return b
@@ -1407,7 +1439,7 @@ function make_tuple_array_copy(a::Array{Any})
         if a[i] isa Expr && a[i].head == :tuple
             append!(r, a[i].args)   # each of a[i].args should already be copied and splatted
         else
-            push!(r, Expr(:(...), Expr(:call, :scopy, a[i]))) # TODO opt: splat can be avoided somtimes
+            push!(r, Expr(:(...), Expr(:call, :scopy_allow_tuple, a[i]))) # TODO opt: splat can be avoided somtimes
         end
     end
     return r
@@ -1424,16 +1456,22 @@ const newstructprefix    = "NewStruct_"
 const newstructrefprefix = "NewStructRef_"
 
 function convert_typestring_tosymbol(s::String)
-    if s == "int"
+    if s == "proc"
+        return :Proc
+    elseif s == "int"
         return :Int
     elseif s == "bigint"
         return :BigInt
+    elseif s == "string"
+        return :NiString
     elseif s == "intvec"
         return :Intvec
     elseif s == "intmat"
         return :IntMat
     elseif s == "bigintmat"
         return :BigIntMat
+    elseif s == "list"
+        return :List
     else
         return Symbol(newstructprefix * s)
     end
@@ -1485,6 +1523,14 @@ function convert_newstruct_decl(newtypename::String, args::String)
     ))
 
     push!(r.args, Expr(:function, Expr(:call, :scopy, Expr(:(::), :f, newtype)),
+        Expr(:return, :f)
+    ))
+
+    push!(r.args, Expr(:function, Expr(:call, :scopy_allow_tuple, Expr(:(::), :f, newreftype)),
+        Expr(:return, Expr(:call, newtype, Expr(:call, :deepcopy, :f)))
+    ))
+
+    push!(r.args, Expr(:function, Expr(:call, :scopy_allow_tuple, Expr(:(::), :f, newtype)),
         Expr(:return, :f)
     ))
 
@@ -1745,7 +1791,7 @@ function convert_returncmd(a::AstNode, env::AstEnv)
     if a.rule == @RULE_returncmd(1)
         b::Array{Any} = convert_exprlist(a.child[1], env)
         if length(b) == 1
-            return Expr(:return, b[1])  # TODO: do we need an scopy?
+            return Expr(:return, b[1])  # TODO: do we need to wrap b[1] in scopy_allow_tuple?
         else
             return Expr(:return, Expr(:tuple, make_tuple_array_copy(b)...))
         end
