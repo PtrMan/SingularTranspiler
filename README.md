@@ -174,7 +174,7 @@ proc g() {return(1, x););
 
 
 
-(8) Besides the second-class types instantiated in unknown identifiers, there is a "nothing" that can be passed around.
+(8) Besides the second-class types instantiated in unknown identifiers and tuples, there is a "nothing" that can be passed around.
 ```
 > proc f() {return();};
 > list k; k[10]=0;
@@ -199,7 +199,7 @@ proc g() {return(1, x););
    1
 ```
 
-(9) Lists can be either ring-dependent or ring-independent and thus disappear and reappear in the scope of a function
+(9) Lists can be either ring-dependent or ring-independent and thus disappear and reappear in the list of local variables w.r.t. a procedure.
 
 ```
 > proc f(int b, def R, def S)
@@ -233,4 +233,20 @@ proc g() {return(1, x););
    v
 [3]:
    w
+```
+
+(10) (Not completely unrelated to (9)) Variables declared poly need not be poly's. Therefore, _we have no type information on ring dependent types inside of a procedure_.
+```
+> proc f(def R, def S)
+> {
+>     setring R;
+>     poly p = x*y;
+>     setring S;
+>     typeof(p);    // it will be an ideal
+> };
+> ring r = 0,(x,y,z),lp;
+> ring s = 0,(u,v,w),lp;
+> ideal p = (u,v,w);
+> f(r, s);
+ideal
 ```
