@@ -169,7 +169,7 @@ proc g() {return(1, x););
     * If E1 is of `map` type, then `E1(E2)` calls special evaluation code for maps.
     * If E1 is of `UNKOWN` type, then `E1(E2)` evaluates to another UNKNOWN type with a longer name.
 
-(7.3) The ring constructor dynamically introduce new identifiers into the current lexical scope.
+(7.3) The ring constructor dynamically introduces new identifiers into the current lexical scope.
       I have no idea how this could be done in julia without a complete rewrite of the interpreter that takes advantage of _none_ of the dynamic features of julia.
 
 
@@ -199,7 +199,7 @@ proc g() {return(1, x););
    1
 ```
 
-(9) List can be either ring-dependent or ring-independent and thus disappear and reappear in the scope of a function
+(9) Lists can be either ring-dependent or ring-independent and thus disappear and reappear in the scope of a function
 
 ```
 > proc f(int b, def R, def S)

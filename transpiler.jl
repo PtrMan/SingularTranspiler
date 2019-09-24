@@ -6,7 +6,7 @@ list l; l[2] = 0;
 Functions can also return "nothing", i.e. the return value of
 proc f() {return();};
 
-Therefore we use Julia's :nothing for both of these "nothings" and do NOT include Nothing in SingularType below.
+Therefore we use Julia's :nothing for both of these "nothings" and do include Nothing in SingularType below.
 
 This "nothing" is distinct from a zero-length tuple and is very distinct from the Unknown type defined below
 For example, the statement
@@ -18,13 +18,13 @@ fails in the Singular interpreter because something on the "right side is not a 
 The Julia interpreter will fail in the first example because the length of the rhs tuple is checked before assignment.
 The Julia interpreter will fail in the second example because the assignment to b is done via
 b = convert2something(..)       # "something" is the stored type of b, which we won't allow to be Nothing
-and the convert2something will throw an error on :nothing
+and the convert2something will throw an error on :nothing (unless b was declared a "def")
 
 In general, it is allowed to pass nothing around in singular, i.e.
 list k, l;
 l[2] = 0;       // size(l) is 2, l[1] is nothing
-k[1] = 0;       // size(k) == 1
-k[1] = l[1];    // size(k) == 0
+k[1] = 0;       // size(k) is 1
+k[1] = l[1];    // size(k) is 0
 
 Therefore, the error must occur when trying to assign nothing to b, and not when constructing the tuple.
 
@@ -157,7 +157,7 @@ end
 # scopy: copy with an error on tuples
 # scopy_allow_tuple: copy everything scopy can copy and also allow tuples through
 
-# scopy is probably only used internally since anything the transpiler would want to copy could be a tuple
+# scopy is probably only used by the runtime since anything the transpiler would want to copy could be a tuple
 
 scopy(a::Nothing) = a
 scopy_allow_tuple(a::Nothing) = a
@@ -201,20 +201,19 @@ scopy(a::Tuple{Vararg{Any}}) = error("internal error: The tuple $a leaked throug
 scopy_allow_tuple(a::Tuple{Vararg{Any}}) = a
 
 # copiers returning non SingularType, usually so that we can mutate it
-# only used internally for convenience
-# should not be output by transpiler
+# only used internally for convenience by the runtime, and should not be output by transpiler
 
-sedit(a::Vector{Int}) = deepcopy(a)
-sedit(a::IntVec) = a.vector
+_sedit(a::Vector{Int}) = deepcopy(a)
+_sedit(a::IntVec) = a.vector
 
-sedit(a::Array{Int, 2}) = deepcopy(a)
-sedit(a::IntMat) = a.matrix
+_sedit(a::Array{Int, 2}) = deepcopy(a)
+_sedit(a::IntMat) = a.matrix
 
-sedit(a::Array{BigInt, 2}) = deepcopy(a)
-sedit(a::BigIntMat) = a.matrix
+_sedit(a::Array{BigInt, 2}) = deepcopy(a)
+_sedit(a::BigIntMat) = a.matrix
 
-sedit(a::ListData) = deepcopy(a)
-sedit(a::List) = a.list
+_sedit(a::ListData) = deepcopy(a)
+_sedit(a::List) = a.list
 
 # get the underlying non SingularType
 
@@ -650,7 +649,7 @@ function sset(a::_IntMat, b::_IntMat)
 end
 
 function sset(a::_IntMat, b::Tuple{Vararg{Any}})
-    A = sedit(a)
+    A = _sedit(a)
     nrows, ncols = size(A)
     row_idx = col_idx = 1
     for i in b
@@ -677,7 +676,7 @@ function sset(a::_BigIntMat, b::_BigIntMat)
 end
 
 function sset(a::_BigIntMat, b::Tuple{Vararg{Any}})
-    A = sedit(a)
+    A = _sedit(a)
     nrows, ncols = size(A)
     row_idx = col_idx = 1
     for i in b
@@ -753,7 +752,7 @@ end
 
 function sinsert(a::_List, b, i::Int)
     bcopy = scopy(b)
-    r = sedit(a);
+    r = _sedit(a);
     if i > length(r.data)
         resize!(r.data, i + 1)
         r.data[i + 1] = bcopy
@@ -766,7 +765,7 @@ end
 
 
 function sdelete(a::_List, i::Int)
-    r = sedit(a);
+    r = _sedit(a);
     deleteat!(r.data, i)
     # TODO: remove nothings on the end?
     return List(r)
@@ -827,7 +826,7 @@ splus(a::BigInt, b::Int) = a + b
 splus(a::BigInt, b::BigInt) = a + b
 
 function splus(a::_List, b::_List)
-    return List(ListData(vcat(sedit(a).data, sedit(b).data)))
+    return List(ListData(vcat(_sedit(a).data, _sedit(b).data)))
 end
 
 function splus(a::Tuple{Vararg{Any}}, b::_SingularType)
@@ -859,7 +858,7 @@ function splus(a::Int, b::_IntVec)
 end
 
 function splus(a::_IntMat, b::Int)
-    A = sedit(a)
+    A = _sedit(a)
     nrows, ncols = size(A)
     for i in 1:min(nrows, ncols)
         A[i, i] = splus(A[i, i], b)
@@ -868,7 +867,7 @@ function splus(a::_IntMat, b::Int)
 end
 
 function splus(a::Int, b::_IntMat)
-    B = sedit(b)
+    B = _sedit(b)
     nrows, ncols = size(B)
     for i in 1:min(nrows, ncols)
         B[i, i] = splus(a, B[i, i])
