@@ -198,3 +198,39 @@ proc g() {return(1, x););
 [1]:
    1
 ```
+
+(9) List can be either ring-dependent or ring-independent and thus disappear and reappear in the scope of a function
+
+```
+> proc f(int b, def R, def S)
+> {
+>     list l = 1, 2, 3;
+>     if (b)
+>     {
+>         setring R;
+>         l[1] = x*y;
+>     }
+>     setring S;
+>     l;
+> };
+
+> ring r = 0, (x, y, z), lp;
+> ring s = 0, (u, v, w), lp;
+> list l = u, v, w;
+
+> f(0, r, s);
+[1]:
+   1
+[2]:
+   2
+[3]:
+   3
+
+> f(1, r, s);
+[1]:
+   u
+[2]:
+   v
+[3]:
+   w
+```

@@ -1,4 +1,3 @@
-
 #=
 
 It is possible for elements of a Singular list to be "nothing", i.e. l[1] after
@@ -299,8 +298,20 @@ end
 
 function sasbool(a)
     error("expected int for boolean expression")
-    return Int(0)
+    return false
 end
+
+#### def
+
+function sconvert2def(a::SingularType)
+    return scopy(a)
+end
+
+function sconvert2def(a...)
+    error("cannot convert $a to a def")
+    return a
+end
+
 
 #### proc
 
@@ -584,34 +595,47 @@ function _sindenting_print(a::Tuple{Vararg{Any}}, indent::Int)
     end
 end
 
-#the print function in Singular returns a string and does not print
-function sprint(::Nothing)
+# the "print" function in Singular returns a string and does not print
+function ssprint(::Nothing)
     return ""
 end
 
-function sprint(a)
+function ssprint(a)
     return NiString(_sindenting_print(a, 0))
 end
 
 # the semicolon in Singular is the method to actually print something
-function _sprintout(::Nothing)
+function ssprintout(::Nothing)
     return  # we will probably be printing nothing often - very important to not print anything in this case!
 end
 
-function _sprintout(a)
+function ssprintout(a)
     println(_sindenting_print(a, 0))
 end
 
-# type ...; will call _sprintouttype
-function _sprintouttype(a)
+# type ...; will call _ssprintouttype
+function ssprintouttype(a)
     println("add correct type printing here")
 end
 
 ########### mutatingish operations #############################################
 
-# in general the operation of the assignment a = b in Singular depends on the values of a and b
-# Therefore, a = b is sometimes transpiled into a = sset(a, b)
-#   currently only for intmat and bigintmat a, and when the type of a is not known at transpile time
+# in general the operation of the assignment a = b in Singular depends on the
+# values of a and b Therefore, a = b is sometimes transpiled into a = sset(a, b)
+#   currently only for intmat and bigintmat a, and when the type of a is not
+#   known at transpile time
+
+# The assignment to any variable "a" declared "def" must pass through sset because:
+#   (1) The initial value of "a" is nothing
+#   (2) The first assignment to "a" with a non-nothing type on the rhs succeeds
+#       and essentially determines the type of "a"
+#   (3) Future assignments to "a" behave as if "a" had the type in (2)
+# Since we don't know if an assignment is the first or not - and even if we did,
+# we don't know the type of the rhs - all of this type checking is done by sset
+
+function sset(a::Nothing, b::SingularType)  # used for the first set of a variable of type def
+    return scopy(b)
+end
 
 function sset(a::Int, b)
     return sconvert2int(b)
@@ -1686,7 +1710,7 @@ function convert_elemexpr(a::AstNode, env::AstEnv)
     elseif a.rule == @RULE_elemexpr(19)
         t = a.child[1]::Int
         if t == Int(PRINT_CMD)
-            return Expr(:call, :sprint, convert_expr(a.child[2], env))
+            return Expr(:call, :ssprint, convert_expr(a.child[2], env))
         else
             throw(TranspileError("internal error in convert_elemexpr 19"))
         end
@@ -1802,34 +1826,29 @@ function convert_returncmd(a::AstNode, env::AstEnv)
     end
 end
 
+coerce_for_assign(::Nothing, a::Nothing)            = a
+coerce_for_assign(::Nothing, a)                     = Expr(:call, :sconvert2def, a)
 coerce_for_assign(::Type{Proc}, a::Proc)            = a
-coerce_for_assign(::Type{Proc}, a::Symbol)          = Expr(:call, :sconvert2proc, a)
-coerce_for_assign(::Type{Proc}, a::Expr)            = Expr(:call, :sconvert2proc, a)
+coerce_for_assign(::Type{Proc}, a)                  = Expr(:call, :sconvert2proc, a)
 coerce_for_assign(::Type{Int}, a::Int)              = a
-coerce_for_assign(::Type{Int}, a::Symbol)           = Expr(:call, :sconvert2int, a)
-coerce_for_assign(::Type{Int}, a::Expr)             = Expr(:call, :sconvert2int, a)
+coerce_for_assign(::Type{Int}, a)                   = Expr(:call, :sconvert2int, a)
 coerce_for_assign(::Type{BigInt}, a::BigInt)        = a
 coerce_for_assign(::Type{BigInt}, a::Int)           = BigInt(a)
-coerce_for_assign(::Type{BigInt}, a::Symbol)        = Expr(:call, :sconvert2bigint, a)
-coerce_for_assign(::Type{BigInt}, a::Expr)          = Expr(:call, :sconvert2bigint, a)
+coerce_for_assign(::Type{BigInt}, a)                = Expr(:call, :sconvert2bigint, a)
 coerce_for_assign(::Type{NiString}, a::NiString)    = a
-coerce_for_assign(::Type{NiString}, a::Symbol)      = Expr(:call, :sconvert2string, a)
-coerce_for_assign(::Type{NiString}, a::Expr)        = Expr(:call, :sconvert2string, a)
+coerce_for_assign(::Type{NiString}, a)              = Expr(:call, :sconvert2string, a)
 coerce_for_assign(::Type{IntVec}, a::IntVec)        = a
-coerce_for_assign(::Type{IntVec}, a::Symbol)        = Expr(:call, :sconvert2intvec, a)
-coerce_for_assign(::Type{IntVec}, a::Expr)          = Expr(:call, :sconvert2intvec, a)
+coerce_for_assign(::Type{IntVec}, a)                = Expr(:call, :sconvert2intvec, a)
 coerce_for_assign(::Type{IntMat}, a::IntMat)        = a
-coerce_for_assign(::Type{IntMat}, a::Symbol)        = Expr(:call, :sconvert2intmat, a)
-coerce_for_assign(::Type{IntMat}, a::Expr)          = Expr(:call, :sconvert2intmat, a)
+coerce_for_assign(::Type{IntMat}, a)                = Expr(:call, :sconvert2intmat, a)
 coerce_for_assign(::Type{BigIntMat}, a::BigIntMat)  = a
-coerce_for_assign(::Type{BigIntMat}, a::Symbol)     = Expr(:call, :sconvert2bigintmat, a)
-coerce_for_assign(::Type{BigIntMat}, a::Expr)       = Expr(:call, :sconvert2bigintmat, a)
+coerce_for_assign(::Type{BigIntMat}, a)             = Expr(:call, :sconvert2bigintmat, a)
 coerce_for_assign(::Type{List}, a::List)            = a
-coerce_for_assign(::Type{List}, a::Symbol)          = Expr(:call, :sconvert2list, a)
-coerce_for_assign(::Type{List}, a::Expr)            = Expr(:call, :sconvert2list, a)
+coerce_for_assign(::Type{List}, a)                  = Expr(:call, :sconvert2list, a)
 
 
 stype_string(s::Symbol)         = String(s)
+stype_string(::Nothing)         = "def"
 stype_string(::Type{Unknown})   = "?unknown type?"
 stype_string(::Type{Proc})      = "proc"
 stype_string(::Type{Int})       = "int"
@@ -1841,7 +1860,7 @@ stype_string(::Type{BigIntMat}) = "bigintmat"
 stype_string(::Type{List})      = "list"
 
 function assignment_to_symbol(left::Symbol, right, typ, env::AstEnv)
-    if typ == IntMat || typ == BigIntMat
+    if typ == IntMat || typ == BigIntMat || typ == nothing
         Expr(:(=), left, Expr(:call, :sset, left, right))
     else
         Expr(:(=), left, coerce_for_assign(typ, right))
@@ -1934,13 +1953,13 @@ function convert_typecmd(a::AstNode, env::AstEnv)
     t = Expr(:block)
     if a.rule == @RULE_typecmd(1)
         b = convert_expr(a.child[1], env)
-        push!(t.args, Expr(:call, :_sprintouttype, b))
+        push!(t.args, Expr(:call, :ssprintouttype, b))
     elseif a.rule == @RULE_typecmd(2)
         for b in convert_exprlist(a.child[1], env)
             if b isa Expr && b.head == :block && length(b.args) > 0 && b.args[length(b.args)] == :nothing
                 push!(t.args, b)
             else
-                push!(t.args, Expr(:call, :_sprintout, b))
+                push!(t.args, Expr(:call, :ssprintout, b))
             end
         end
     else
@@ -1999,7 +2018,13 @@ function convert_declare_ip_variable!(vars::Array{AstNode}, a::AstNode, env::Ast
             tcode = a.child[1]::Int
             prepend_declared_var!(vars, a.child[2])
             r = Expr(:block)
-            if tcode == Int(INT_CMD)
+            if tcode == Int(DEF_CMD)
+                for m in vars
+                    s::String = m.child[1].child[1]
+                    add_declaration!(env, s, nothing)
+                    push!(r.args, Expr(:(=), Symbol(s), coerce_for_assign(nothing, nothing)))
+                end
+            elseif tcode == Int(INT_CMD)
                 for m in vars
                     s::String = m.child[1].child[1]
                     add_declaration!(env, s, Int)
@@ -2084,7 +2109,7 @@ function convert_declare_ip_variable!(vars::Array{AstNode}, a::AstNode, env::Ast
             end
             return r
         else
-            throw(TranspileError("internal error in convert_declare_ip_variable"))
+            throw(TranspileError("internal error in convert_declare_ip_variable "*string(a.rule)))
         end
     end
 end
@@ -2399,7 +2424,7 @@ println("convert_toplines called")
 end
 
 
-function singrun(s::String)
+function srun(s::String)
 
     ast = ccall((:singular_parse, "libsingularparse"), Any,
                     (Cstring, Ptr{Ptr{UInt8}}, UInt),
@@ -2425,4 +2450,3 @@ function singrun(s::String)
         eval(expr)
     end
 end
-
