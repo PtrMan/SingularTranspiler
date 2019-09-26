@@ -204,14 +204,14 @@ proc g() {return(1, x););
 ```
 > proc f(int b, def R, def S)
 > {
->     list l = 1, 2, 3;
+>     list l = 1, 2, 3; // l is ring-independent (1)
 >     if (b)
 >     {
 >         setring R;
->         l[1] = x*y;
+>         l[1] = x*y; // l is ring-dependent (2)
 >     }
 >     setring S;
->     l;
+>     l; // (1) l is 1,2,3, or (2) l is something called "l" in S or an error
 > };
 
 > ring r = 0, (x, y, z), lp;
@@ -235,7 +235,27 @@ proc g() {return(1, x););
    w
 ```
 
-(10) (Not completely unrelated to (9)) Variables declared poly need not be poly's. Therefore, _we have no type information on ring dependent types inside of a procedure_.
+(10) The ring-dependence/independence of a list is of course applied recursively, so the getindex function needs some very special treatment.
+```
+> ring r;
+> list l = list(list(1,2,3), list(4,5,6), list(7,8,9));
+> listvar(r);
+// r                              [0]  *ring
+> l[2][2]=x;
+
+    ssetindex(sgetindex(l,2), 2, x)
+
+
+> listvar(r);
+// r                              [0]  *ring
+// l                              [0]  list, size: 3
+> l[2][2]=55;
+> listvar(r);
+// r                              [0]  *ring
+```
+
+
+(11) Variables declared poly need not be poly's. Therefore, _we have no type information on ring dependent types inside of a procedure_.
 ```
 > proc f(def R, def S)
 > {
@@ -249,4 +269,13 @@ proc g() {return(1, x););
 > ideal p = (u,v,w);
 > f(r, s);
 ideal
+```
+
+
+(12) A proc that looks like it calls itself may in fact not call itself.
+```
+> proc f(int n) {if (n <= 1) {return(n);} else {return(f(n - 1) + f(n - 2));}};
+> proc g(int n) {return(n*n);};
+> proc h = f; f = g; g = h; // swap f and g
+> g(5); // this is 4*4 + 3*3, not the fifth Fibonacci number
 ```
