@@ -1,0 +1,127 @@
+--------transpiled code--------
+sr_declare_proc(SName(:f))
+function ##f(#n)
+    sr_enterfunction()
+    srparameter_int(SName(:n), #n)
+    if sr_asbool(srlessequal(SName(:n), 1))
+        ##529 = sr_copy(sr_make(SName(:n)))
+        sr_leavefunction()
+        return ##529
+    else
+        ##530 = srplus(srcall(SName(:f), sr_copy_allow_tuple(srminus(SName(:n), 1))...), srcall(SName(:f), sr_copy_allow_tuple(srminus(SName(:n), 2))...))
+        sr_leavefunction()
+        return ##530
+    end
+    sr_leavefunction()
+    return nothing
+end
+srassign(SName(:f), SProc(##f, "f"))
+sr_declare_proc(SName(:g))
+function ##g(#n)
+    sr_enterfunction()
+    srparameter_int(SName(:n), #n)
+    sr_declare_bigint(SName(:a))
+    srassign(SName(:a), 0)
+    sr_declare_bigint(SName(:b))
+    srassign(SName(:b), 1)
+    sr_declare_int(SName(:i))
+    srassign(SName(:i), sr_copy(sr_make(SName(:n))))
+    while sr_asbool(srgreater(SName(:i), 0))
+        ##531 = (sr_copy_allow_tuple(srplus(SName(:b), 0))..., sr_copy_allow_tuple(srplus(SName(:a), SName(:b)))...)
+        sr_checktuplelength(##531, 2)
+        srassign(SName(:a), ##531[1])
+        srassign(SName(:b), ##531[2])
+        sr_incrementby(SName(:i), -1)
+    end
+    ##532 = sr_copy(sr_make(SName(:a)))
+    sr_leavefunction()
+    return ##532
+    sr_leavefunction()
+    return nothing
+end
+srassign(SName(:g), SProc(##g, "g"))
+sr_declare_proc(SName(:h))
+function ##h(#n)
+    sr_enterfunction()
+    srparameter_int(SName(:n), #n)
+    if sr_asbool(srlessequal(SName(:n), 1))
+        ##533 = (sr_copy_allow_tuple(sr_cast2bigint(sr_make(SName(:n))))..., sr_copy_allow_tuple(sr_cast2bigint(1))...)
+        sr_leavefunction()
+        return ##533
+    end
+    sr_declare_bigint(SName(:a))
+    sr_declare_bigint(SName(:b))
+    ##534 = (sr_copy_allow_tuple(srcall(SName(:h), sr_copy_allow_tuple(srdivide(SName(:n), 2))...))...,)
+    sr_checktuplelength(##534, 2)
+    srassign(SName(:a), ##534[1])
+    srassign(SName(:b), ##534[2])
+    if sr_asbool(srmod(SName(:n), 2))
+        ##535 = (sr_copy_allow_tuple(srplus(srtimes(SName(:a), SName(:a)), srtimes(SName(:b), SName(:b))))..., sr_copy_allow_tuple(srtimes(SName(:b), srplus(srtimes(2, SName(:a)), SName(:b))))...)
+        sr_leavefunction()
+        return ##535
+    else
+        ##536 = (sr_copy_allow_tuple(srtimes(SName(:a), srminus(srtimes(2, SName(:b)), SName(:a))))..., sr_copy_allow_tuple(srplus(srtimes(SName(:a), SName(:a)), srtimes(SName(:b), SName(:b))))...)
+        sr_leavefunction()
+        return ##536
+    end
+    sr_leavefunction()
+    return nothing
+end
+srassign(SName(:h), SProc(##h, "h"))
+sr_declare_int(SName(:time))
+sr_declare_bigint(SName(:a))
+sr_declare_bigint(SName(:b))
+sr_printout(srsystem(sr_copy_allow_tuple(SString("--ticks-per-sec"))..., 1000))
+srassign(SName(:time), srrtimer())
+srassign(SName(:a), srcall(SName(:f), 25))
+sr_printout(srminus(srrtimer(), SName(:time)))
+srassign(SName(:time), srrtimer())
+srassign(SName(:a), srcall(SName(:f), 30))
+sr_printout(srminus(srrtimer(), SName(:time)))
+srassign(SName(:time), srrtimer())
+srassign(SName(:a), srcall(SName(:g), 10000))
+sr_printout(srminus(srrtimer(), SName(:time)))
+srassign(SName(:time), srrtimer())
+srassign(SName(:a), srcall(SName(:g), 500000))
+sr_printout(srminus(srrtimer(), SName(:time)))
+srassign(SName(:time), srrtimer())
+##537 = (sr_copy_allow_tuple(srcall(SName(:h), 2000000))...,)
+sr_checktuplelength(##537, 2)
+srassign(SName(:a), ##537[1])
+srassign(SName(:b), ##537[2])
+sr_printout(srminus(srrtimer(), SName(:time)))
+srassign(SName(:time), srrtimer())
+##538 = (sr_copy_allow_tuple(srcall(SName(:h), 20000000))...,)
+sr_checktuplelength(##538, 2)
+srassign(SName(:a), ##538[1])
+srassign(SName(:b), ##538[2])
+sr_printout(srminus(srrtimer(), SName(:time)))
+-------------------------------
+┌ Warning: redeclaration of proc f
+└ @ Main ~/git/SingularTranspiler/transpiler.jl:318
+┌ Warning: redeclaration of proc g
+└ @ Main ~/git/SingularTranspiler/transpiler.jl:318
+┌ Warning: redeclaration of proc h
+└ @ Main ~/git/SingularTranspiler/transpiler.jl:318
+┌ Warning: redeclaration of int time
+└ @ Main ~/git/SingularTranspiler/transpiler.jl:318
+┌ Warning: redeclaration of bigint a
+└ @ Main ~/git/SingularTranspiler/transpiler.jl:318
+┌ Warning: redeclaration of bigint b
+└ @ Main ~/git/SingularTranspiler/transpiler.jl:318
+401
+3985
+106
+7462
+125
+439
+
+
+> <"/home/schultz/git/SingularTranspiler/test.txt"
+1964
+21737
+78
+6721
+23
+299
+

@@ -41,9 +41,8 @@ proc h(int n)
 int time;
 bigint a, b;
 system("--ticks-per-sec", 1000);
-time = rtimer; a    = f(25); rtimer - time;
-time = rtimer; a    = f(30); rtimer - time;
+time = rtimer; a    = f(15); rtimer - time;
+time = rtimer; a    = f(20); rtimer - time;
 time = rtimer; a    = g(10000); rtimer - time;
-time = rtimer; a    = g(500000); rtimer - time;
-time = rtimer; a, b = h(2000000); rtimer - time;
-time = rtimer; a, b = h(20000000); rtimer - time;
+time = rtimer; a    = g(100000); rtimer - time;
+time = rtimer; a, b = h(1000000); rtimer - time;

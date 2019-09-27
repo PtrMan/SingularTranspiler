@@ -279,3 +279,20 @@ ideal
 > proc h = f; f = g; g = h; // swap f and g
 > g(5); // this is 4*4 + 3*3, not the fifth Fibonacci number
 ```
+
+(13) Singular allows polys to have the same names as ring variable names.
+```
+> ring r = 0, (x, y, z), lp;
+> x + y + z;
+x+y+z
+> x = y + z;
+   ? error in assign: left side is not an l-value
+   ? error occurred in or before STDIN line 3: `x = y + z;`
+> poly x = y + z;
+> x + y + z;       
+2y+2z
+> var(1) + var(2) + var(3);
+x+y+z
+```
+
+
