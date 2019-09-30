@@ -242,10 +242,6 @@ proc g() {return(1, x););
 > listvar(r);
 // r                              [0]  *ring
 > l[2][2]=x;
-
-    ssetindex(sgetindex(l,2), 2, x)
-
-
 > listvar(r);
 // r                              [0]  *ring
 // l                              [0]  list, size: 3
