@@ -315,7 +315,7 @@ two (or three?) categories:
     looked up at runtime. If you have a "poly p" in your function and a
     "p" elsewhere in the same function, determining if these refer to the same
     binding is a non-trivial code analysis problem. Changing this will probably
-    break 
+    break too much code.
         
 ```
 proc f(...) {
@@ -328,7 +328,13 @@ proc f(...) {
     i;
 }
 ```
-If this should be transpiled, the output will be
+
+If this should be transpiled, the transpiler will make one pass through the code
+where the first `i` will become `Name(:i)`, the second `i` will tell the transpiler
+about `i` and add a local variable `i` to the code, and the third `i` will simply
+reference this local variable. The transpiler will make a second pass and
+replace `Name(:i)` with a warning.
+
 ```
 function ##f(...)
     enterfunction()
