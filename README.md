@@ -297,12 +297,12 @@ x+y+z
 
 Conclusion: In its full generality, Singular's identifer resolution is the death
 of compilation. If we can change (5) and (9-10), then we can have faster
-ring-independent types inside functions, because types will then fit into
+ring-independent types inside functions because types will then fit into
 two (or three?) categories:
 
-(1) ring-independent types: int, bigint, intvec, intmat, bigintmat, list, proc, newstruct
-    When "int i" is used inside a function, every "i" can be assumed to be
-    the same local variable. When this is not the case, the runtime (or even transpiler)
+(1) ring-independent types: `int, bigint, intvec, intmat, bigintmat, list, proc, newstruct`
+    When `int i` is used inside a function, every `i` can be assumed to be a
+    reference to the same lookup table. When this is not the case, the runtime (or even transpiler)
     can check and issue a warning or error. When ring-independent types are
     used at the top level, they revert back to the slow look-everything-up
     implementation.
@@ -311,11 +311,11 @@ two (or three?) categories:
     Rings are ring-independent but may have different lookup rules from (1).
     They also need special handlers because they change the lookup space for (2).
 
-(2) ring-dependent types: These will always be implemented with symbols and
-    looked up at runtime. If you have a "poly p" in your function and a
-    "p" elsewhere in the same function, determining if these refer to the same
-    binding is a non-trivial code analysis problem. Changing this will probably
-    break too much code.
+(2) ring-dependent types: `poly, matrix, ideal, ...`
+    These will always be implemented with symbols and a slow runtime lookup.
+    If you have a `poly p` in your function and `p` elsewhere in the same function,
+    determining if these refer to a `p` in the same lookup table is a non-trivial
+    code analysis problem. Changing this will probably break too much code.
         
 ```
 proc f(...) {
