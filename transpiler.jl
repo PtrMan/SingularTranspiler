@@ -236,8 +236,8 @@ sr_copy_allow_tuple(a::Nothing) = a
 sr_copy(a::SProc) = a
 sr_copy_allow_tuple(a::SProc) = a
 
-sr_copy(a::SName) = sr_make(a)
-sr_copy_allow_tuple(a::SName) = sr_make(a)
+sr_copy(a::SName) = sr_error("internal error: The name $a leaked through. Please report this.")
+sr_copy_allow_tuple(a::SName) = sr_error("internal error: The name $a leaked through. Please report this.")
 
 sr_copy(a::Int) = a
 sr_copy_allow_tuple(a::Int) = a
@@ -271,6 +271,8 @@ sr_copy_allow_tuple(a::SList) = a
 sr_copy(a::Tuple{Vararg{Any}}) = error("internal error: The tuple $a leaked through. Please report this.")
 sr_copy_allow_tuple(a::Tuple{Vararg{Any}}) = a
 
+
+
 # copiers returning non SingularType, usually so that we can mutate it
 # only used internally for convenience by the runtime, and should not be output by transpiler
 
@@ -292,7 +294,7 @@ sr_ref(a::Nothing) = a
 
 sr_ref(a::SProc) = a
 
-sr_ref(a::SName) = a
+sr_ref(a::SName) = sr_error("internal error: The name $a leaked through. Please report this.")
 
 sr_ref(a::Int) = a
 
@@ -332,7 +334,7 @@ end
 
 sr_typetostring(::Nothing)          = "def"
 sr_typetostring(::Type{Nothing})    = "def"
-sr_typetostring(::Type{SName})   = "?unknown type?"
+sr_typetostring(::Type{SName})      = "?unknown type?"
 sr_typetostring(::Type{SProc})      = "proc"
 sr_typetostring(::Type{Int})        = "int"
 sr_typetostring(::Type{BigInt})     = "bigint"
@@ -341,6 +343,15 @@ sr_typetostring(::Type{SIntVec})    = "intvec"
 sr_typetostring(::Type{SIntMat})    = "intmat"
 sr_typetostring(::Type{SBigIntMat}) = "bigintmat"
 sr_typetostring(::Type{SList})      = "list"
+
+
+function is_valid_newstruct_member(s::String)
+    if match(r"^[a-zA-Z][a-zA-Z0-9]*$", s) == nothing
+        return false
+    else
+        return true
+    end
+end
 
 function sr_declarewarnerror(d::Dict{Symbol, Any}, x::Symbol, t)
     if d[x] isa t
@@ -470,6 +481,24 @@ end
 #### list
 function sr_defaultconstructor_list()
     return SList(SListData(Any[]))
+end
+
+function sr_declare_list(a::SName)
+    n = length(sGlobal.fxnstack)
+    if haskey(sGlobal.fxnstack[n], a.name)
+        sr_declarewarnerror(sGlobal.fxnstack[n], a.name, SList)
+    end
+    if length(sGlobal.currentring.varstack) >= n && haskey(sGlobal.currentring.varstack[n], a.name)
+        sr_declarewarnerror(sGlobal.currentring.varstack[n], a.name, SList)
+    end
+    sGlobal.fxnstack[n][a.name] = sr_defaultconstructor_list()
+end
+
+function srparameter_list(a::SName, b)
+    n = length(sGlobal.fxnstack)
+    @assert !(haskey(sGlobal.fxnstack[n], a.name))
+    @assert !(length(sGlobal.currentring.varstack) >= n && haskey(sGlobal.currentring.varstack[n], a.name))
+    sGlobal.fxnstack[n][a.name] = sr_convert2list(b)
 end
 
 
@@ -827,10 +856,30 @@ end
 
 ########### mutatingish operations #############################################
 
+# hmm, there might be a better way
+sr_getindex(a::SName, i::SName, j::SName) = sr_getindex(sr_make(a), sr_make(i), sr_make(j))
+sr_getindex(a::SName, i::SName, j       ) = sr_getindex(sr_make(a), sr_make(i),         j )
+sr_getindex(a::SName, i,        j::SName) = sr_getindex(sr_make(a),         i , sr_make(j))
+sr_getindex(a::SName, i,        j       ) = sr_getindex(sr_make(a),         i ,         j )
+sr_getindex(a       , i::SName, j::SName) = sr_getindex(        a , sr_make(i), sr_make(j))
+sr_getindex(a       , i::SName, j       ) = sr_getindex(        a , sr_make(i),         j )
+sr_getindex(a       , i       , j::SName) = sr_getindex(        a ,         i , sr_make(j))
+
+sr_getindex(a::SName, i::SName) = sr_getindex(sr_make(a), sr_make(i))
+sr_getindex(a::SName, i       ) = sr_getindex(sr_make(a),         i )
+sr_getindex(a,        i::SName) = sr_getindex(        a , sr_make(i))
+
+sr_setindex(a::SName, i::SName, b::SName) = sr_getindex(sr_make(a), sr_make(i), sr_make(b))
+sr_setindex(a::SName, i::SName, b       ) = sr_getindex(sr_make(a), sr_make(i),         b )
+sr_setindex(a::SName, i,        b::SName) = sr_getindex(sr_make(a),         i , sr_make(b))
+sr_setindex(a::SName, i,        b       ) = sr_getindex(sr_make(a),         i ,         b )
+sr_setindex(a       , i::SName, b::SName) = sr_getindex(        a , sr_make(i), sr_make(b))
+sr_setindex(a       , i::SName, b       ) = sr_getindex(        a , sr_make(i),         b )
+sr_setindex(a       , i       , b::SName) = sr_getindex(        a ,         i , sr_make(b))
+
+
 # in general the operation of the assignment a = b in Singular depends on the
 # values of a and b Therefore, a = b becomes a = sr_assign(a, b)
-#   currently only for intmat and bigintmat a, and when the type of a is not
-#   known at transpile time
 
 # The assignment to any variable "a" declared "def" must pass through sr_assign because:
 #   (1) The initial value of "a" is nothing
@@ -839,7 +888,6 @@ end
 #   (3) Future assignments to "a" behave as if "a" had the type in (2)
 # Since we don't know if an assignment is the first or not - and even if we did,
 # we don't know the type of the rhs - all of this type checking is done by sr_assign
-
 
 function srassign(a::SName, b)
     n = length(sGlobal.fxnstack)
@@ -938,38 +986,43 @@ function sr_assign(a::_List, b::_List)
 end
 
 function sr_assign(a::_List, b)
-    error("cannot assign $b to bigintmat")
+    return sr_convert2list(b)
 end
 
 
-function sgetindex(a::_IntVec, i::Int)
-    return sref(a)[i]
+function sr_getindex(a::_IntVec, i::Int)
+    return sr_ref(a)[i]
 end
 
 function sr_assignindex(a::_IntVec, i::Int, b)
-    sref(a)[i] = sr_copy(b)
+    sr_ref(a)[i] = sr_copy(b)
     return nothing
 end
 
 
-function sgetindex(a::_BigIntMat, i::Int, j::Int)
-    return sref(a)[i, j]
+function sr_getindex(a::_BigIntMat, i::Int, j::Int)
+    return sr_ref(a)[i, j]
 end
 
 
 function sr_assignindex(a::_BigIntMat, i::Int, j::Int, b)
-    sref(a)[i, j] = sr_copy(b)
+    sr_ref(a)[i, j] = sr_copy(b)
     return nothing
 end
 
 
-function sgetindex(a::_List, i::Int)
-    return sref(sref(a).data[i])
+function sr_getindex(a::_List, i::Int)
+    return sr_ref(sr_ref(a).data[i])
 end
 
-function ssetindex(a::_List, i::Int, b)
+function sr_getindex(a, i)
+    sr_error("cannot get index $i of $a")
+end
+
+
+function sr_setindex(a::SListData, i::Int, b)
     bcopy = sr_copy(b) # copy before the possible resize
-    r = sref(a).data
+    r = a.data
     if bcopy == nothing
         if i < length(r)
             r[i] = nothing
@@ -993,7 +1046,12 @@ function ssetindex(a::_List, i::Int, b)
 end
 
 
-function sinsert(a::_List, b, i::Int)
+function sr_setindex(a::SList, i::Int, b)
+    return sr_setindex(sr_ref(a), i, b)
+end
+
+
+function srinsert(a::_List, b, i::Int)
     bcopy = sr_copy(b)
     r = _sedit(a);
     if i > length(r.data)
@@ -1007,7 +1065,7 @@ function sinsert(a::_List, b, i::Int)
 end
 
 
-function sdelete(a::_List, i::Int)
+function srdelete(a::_List, i::Int)
     r = _sedit(a);
     deleteat!(r.data, i)
     # TODO: remove nothings on the end?
@@ -1333,7 +1391,7 @@ function sr_make(a::SName)
             return sr_ref(sGlobal.currentring.varstack[1][a.name])
         end
     end
-    error(string(a.name) * " is undefined")
+    sr_error(string(a.name) * " is undefined")
 end
 
 
@@ -2089,11 +2147,20 @@ function convert_elemexpr(a::AstNode, env::AstEnv)
         c = a.child[2]
         c.child[1].rule == @RULE_extendedid(1) || throw(TranspileError("rhs of dot is no good"))
         s = c.child[1].child[1]::String
-        b = convert_expr(a.child[1], env)
-        if !(b isa Expr && b.head == :call && length(b.args) == 2 && b.args[1] == :sr_make)
-            b = Expr(:call, :sr_ref, b)
+        doring = false
+        if length(s) > 2 && s[1:2] == "r_"
+            doring = true
+            s = s[3:end]
         end
-        return Expr(:call, :sr_ref, Expr(:(.), b, QuoteNode(Symbol(s))))
+        is_valid_newstruct_member(s) || throw(TranspileError(s * " is not a valid newstruct member name"))
+        b = convert_expr(a.child[1], env)
+        b = Expr(:call, isa(b, SName) ? :sr_make : :sr_ref, b)
+        t = Expr(:call, :sr_ref, Expr(:(.), b, QuoteNode(Symbol(s))))
+        if doring
+            return Expr(:call, :sr_ringof, t)
+        else
+            return t
+        end
     elseif a.rule == @RULE_elemexpr(6) || a.rule == @RULE_elemexpr(5)
         if a.rule == @RULE_elemexpr(6)
             b = convert_exprlist(a.child[2], env)::Array{Any}
@@ -2163,7 +2230,7 @@ function convert_elemexpr(a::AstNode, env::AstEnv)
             b = Any[]
         end
         t = a.child[1]::Int
-        if t == Int(SYSTEM_CMD)            
+        if t == Int(SYSTEM_CMD)
             return Expr(:call, :srsystem, make_tuple_array_nocopy(b)...)
         else
             throw(TranspileError("internal error in convert_elemexpr 30|31"))
@@ -2253,9 +2320,9 @@ function convert_expr(a::AstNode, env::AstEnv)
     elseif a.rule == @RULE_expr(2)
         return convert_elemexpr(a.child[1], env)
     elseif a.rule == @RULE_expr(3)
-        return Expr(:call, :sgetindex, convert_expr(a.child[1], env), convert_expr(a.child[2], env), convert_expr(a.child[3], env))
+        return Expr(:call, :sr_getindex, convert_expr(a.child[1], env), convert_expr(a.child[2], env), convert_expr(a.child[3], env))
     elseif a.rule == @RULE_expr(4)
-        return Expr(:call, :sgetindex, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
+        return Expr(:call, :sr_getindex, convert_expr(a.child[1], env), convert_expr(a.child[2], env))
     else
         throw(TranspileError("internal error in convert_expr"))
     end
@@ -2325,15 +2392,6 @@ stype_string(::Type{SIntMat})    = "intmat"
 stype_string(::Type{SBigIntMat}) = "bigintmat"
 stype_string(::Type{SList})      = "list"
 
-function assignment_to_symbol(left::Symbol, right, typ, env::AstEnv)
-    if typ == SIntMat || typ == SBigIntMat || typ == nothing
-        Expr(:(=), left, Expr(:call, :sr_assign, left, right))
-    else
-        Expr(:(=), left, coerce_for_assign(typ, right))
-    end
-end
-
-
 
 function push_incrementby!(out::Expr, left::AstNode, right::Int, env::AstEnv)
     if left.rule == @RULE_expr(2) || left.rule == @RULE_elemexpr(2)
@@ -2345,30 +2403,48 @@ function push_incrementby!(out::Expr, left::AstNode, right::Int, env::AstEnv)
             if b.rule == @RULE_extendedid(1)
                 push!(out.args, Expr(:call, :sr_incrementby, makeunknown(b.child[1]::String), right))
             else
-                throw(TranspileError("cannot increment lhs"))
+                throw(TranspileError("cannot increment/decrement lhs"))
             end
         elseif a.rule == @RULE_elemexpr(4)
             b = convert_expr(a.child[1], env)
             c = a.child[2]
             c.child[1].rule == @RULE_extendedid(1) || throw(TranspileError("rhs of dot in assignment is no good"))
             s = c.child[1].child[1]::String
+            length(s) < 2 || s[1:2] != "r_" || throw(TranspileError("cannot assign to r_ member of a newstruct"))
+            is_valid_newstruct_member(s) || throw(TranspileError(s * " is not a valid newstruct member name"))
             t = gensym()
-            if isa(b, SName)
-                push!(out.args, Expr(:(=), t, Expr(:call, :sr_make, b)))    # make returns a reference
-            else
-                push!(out.args, Expr(:(=), t, Expr(:call, :sr_ref, b)))
-            end
+
+println("b: $b\n", b)
+
+            push!(out.args, Expr(:(=), t, Expr(:call, isa(b, SName) ? :sr_make : :sr_ref, b)))    # make returns a reference
             b = Expr(:(.), t, QuoteNode(Symbol(s)))
             push!(out.args, Expr(:(=), b, Expr(:call, :srplus, b, right)))
         else
             throw(TranspileError("cannot increment lhs"))
         end
     elseif left.rule == @RULE_expr(3)
-        throw(TranspileError("cannot increment lhs"))
+        b1 = convert_expr(left.child[1], env)
+        b2 = convert_expr(left.child[2], env)
+        b3 = convert_expr(left.child[3], env)
+        t1 = gensym()
+        t2 = gensym()
+        t3 = gensym()
+        push!(out.args, Expr(:(=), t1, isa(b1, SName) ? Expr(:call, :sr_make, b1) : b1))
+        push!(out.args, Expr(:(=), t2, isa(b2, SName) ? Expr(:call, :sr_make, b2) : b2))
+        push!(out.args, Expr(:(=), t3, isa(b3, SName) ? Expr(:call, :sr_make, b3) : b3))
+        push!(out.args, Expr(:call, :sr_setindex, t1, t2, t3,
+                            Expr(:call, :srplus, Expr(:call, :sr_getindex, t1, t2, t3), right)))
     elseif left.rule == @RULE_expr(4)
-        throw(TranspileError("cannot increment lhs"))
+        b1 = convert_expr(left.child[1], env)
+        b2 = convert_expr(left.child[2], env)
+        t1 = gensym()
+        t2 = gensym()
+        push!(out.args, Expr(:(=), t1, isa(b1, SName) ? Expr(:call, :sr_make, b1) : b1))
+        push!(out.args, Expr(:(=), t2, isa(b2, SName) ? Expr(:call, :sr_make, b2) : b2))
+        push!(out.args, Expr(:call, :sr_setindex, t1, t2,
+                            Expr(:call, :srplus, Expr(:call, :sr_getindex, t1, t2), right)))
     else
-        throw(TranspileError("cannot increment lhs"))
+        throw(TranspileError("cannot increment/decrement lhs"))
     end
 end
 
@@ -2390,23 +2466,24 @@ function push_assignment!(out::Expr, left::AstNode, right, env::AstEnv)
             c = a.child[2]
             c.child[1].rule == @RULE_extendedid(1) || throw(TranspileError("rhs of dot in assignment is no good"))
             s = c.child[1].child[1]::String
-            if !(b isa Expr && b.head == :call && length(b.args) == 2 && b.args[1] == :sr_make)
-                b = Expr(:call, :sr_ref, b)
-            end
+            length(s) < 2 || s[1:2] != "r_" || throw(TranspileError("cannot assign to r_ member of a newstruct"))
+            is_valid_newstruct_member(s) || throw(TranspileError(s * " is not a valid newstruct member name"))
+println("b: $b\n", b)
+            b = Expr(:call, isa(b, SName) ? :sr_make : :sr_ref, b)
             b = Expr(:(.), b, QuoteNode(Symbol(s)))
             push!(out.args, Expr(:(=), b, Expr(:call, :sr_assign, b, right)))
         else
             throw(TranspileError("cannot assign to lhs"))
         end
     elseif left.rule == @RULE_expr(3)
-        push!(out.args, Expr(:call, :ssetindex, convert_expr(left.child[1], env),
-                                                convert_expr(left.child[2], env), # no sr_copy needed, runtime error if not int
-                                                convert_expr(left.child[3], env), # no sr_copy needed, runtime error if not int
-                                                right))
+        push!(out.args, Expr(:call, :sr_setindex, convert_expr(left.child[1], env),
+                                                  convert_expr(left.child[2], env), # no sr_copy needed, runtime error if not int
+                                                  convert_expr(left.child[3], env), # no sr_copy needed, runtime error if not int
+                                                  right))
     elseif left.rule == @RULE_expr(4)
-        push!(out.args, Expr(:call, :ssetindex, convert_expr(left.child[1], env),
-                                                convert_expr(left.child[2], env), # no sr_copy needed, runtime error if not int
-                                                right))
+        push!(out.args, Expr(:call, :sr_setindex, convert_expr(left.child[1], env),
+                                                  convert_expr(left.child[2], env), # no sr_copy needed, runtime error if not int
+                                                  right))
     else
         throw(TranspileError("cannot assign to lhs"))
     end
@@ -2497,6 +2574,8 @@ function prepend_declared_var!(vars::Array{AstNode}, m::AstNode)
     (m.rule == @RULE_elemexpr(2) && m.child[1].rule == @RULE_extendedid(1)) || throw(TranspileError("declaration expects identifer name"))
     pushfirst!(vars, m)
 end
+
+
 
 # return is always a block
 function convert_declare_ip_variable!(vars::Array{AstNode}, a::AstNode, env::AstEnv)

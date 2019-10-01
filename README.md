@@ -312,7 +312,27 @@ two (or three?) categories:
     If you have a `poly p` in your function and `p` elsewhere in the same function,
     determining if these refer to a `p` in the same lookup table is a non-trivial
     code analysis problem. Changing this will probably break too much code.
-        
+
+
+It is quite possible to do fine without changing (5). Each variable of ring
+independent type declared inside a function could either get "the fast treatment"
+or "the slow treatment" at transpile time. For an `int i`,
+    fast treatment: a real local variable `local i::Int` is put inside of
+                    the julia function and uses of `i` inside this function
+                    completely bypass the lookup mechanism
+    slow treatment: `i` is used as `SName(:i)` and everything goes through
+                    the lookup tables.
+
+The top level of the body of a Singular `proc` is a sequence of statements. If
+one of these statements is an `int i`, then we can put a `local i::Int = 0` right
+there in the julia code have all uses of `i` in the succeeding statements simply use `i`.
+If `i` is ever killed, executed, or redeclared as something other than an `int` in the
+succeeding statements, then this optimization does not apply anymore.
+
+Because of examples like (9), this optimization currently does not apply to
+lists, so lists must always receive the slow treatment unless (9) is changed.
+
+`i` gets the slow treament everywhere (even if we had real code analysis):
 ```
 proc f(...) {
     ...
@@ -325,27 +345,54 @@ proc f(...) {
 }
 ```
 
-If this should be transpiled, the transpiler will make one pass through the code
-where the first `i` will become `Name(:i)`, the second `i` will tell the transpiler
-about `i` and add a local variable `i` to the code, and the third `i` will simply
-reference this local variable. The transpiler will make a second pass and
-replace `Name(:i)` with a warning.
-
+`i` gets the fast treament after the declaration:
 ```
-function ##f(...)
-    enterfunction()
-    local i::Int = defaultconstructor_int()     # i = 0
+proc f(...) {
     ...
-    if ...
-        warn("use of i before int i declaration")
-    else
-        i = 5
-    end
-    printout(i)             # assume i is our local int i
-    exitfunction()
-    return nothing
-end
+    i;          // slow
+    ...
+
+    int i;      // this sets i to 0
+    if (...) {
+        i;      // fast
+    } else {
+        i;      // fast
+    }
+    i;          // fast
+}
 ```
 
+Unfortunately, `i` gets the slow treatment everywhere - determining that `i` can
+be fast everywhere would require real code analysis:
+```
+proc f(...) {
+    if (...) {
+        for (int i = 0, i < ..., i++) {
+            ...
+        }
+    } else {
+        for (int i = 0, i < ..., i++) {
+            ...
+        }
+    }
+    ...
+}
+```
 
+Rewriting the previous example as follows gives `i` the fast treatment everywhere:
+```
+proc f(...) {
+    int i;
+    if (...) {
+        for (i = 0, i < ..., i++) {
+            ... // fast i in here
+        }
+    } else {
+        for (i = 0, i < ..., i++) {
+            ... // fast i in here
+        }
+    }
+    ... // fast i in here
+}
+```
 
