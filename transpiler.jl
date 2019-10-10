@@ -41,7 +41,7 @@ Therefore, the error must occur when trying to assign nothing to b, and not when
 =#
 
 
-#### singular type "?unknown type?", which is not avaiable to the user
+#### singular type "?unknown type?", which is not avaliable to the user
 struct SName
     name::Symbol
 end
@@ -304,6 +304,7 @@ sr_ref(a::SString) = a
 
 sr_ref(a::Vector{Int}) = a
 sr_ref(a::SIntVec) = a.vector
+
 sr_ref(a::Array{Int, 2}) = a
 sr_ref(a::SIntMat) = a.matrix
 
@@ -1128,16 +1129,16 @@ end
 
 ########### operations ##############################################
 
-srtypeof(::Nothing)      = SString("none")
-srtypeof(::SName)        = SString("?unknown type?")
-srtypeof(::SProc)        = SString("proc")
-srtypeof(::Int)          = SString("int")
-srtypeof(::BigInt)       = SString("bigint")
-srtypeof(::SString)      = SString("string")
-srtypeof(::_IntVec)      = SString("intvec")
-srtypeof(::_IntMat)      = SString("intmat")
-srtypeof(::_BigIntMat)   = SString("bigintmat")
-srtypeof(::_List)        = SString("list")
+srtypeof(a::SName)      = srtypeof(sr_make(a))
+srtypeof(::Nothing)     = SString("none")
+srtypeof(::SProc)       = SString("proc")
+srtypeof(::Int)         = SString("int")
+srtypeof(::BigInt)      = SString("bigint")
+srtypeof(::SString)     = SString("string")
+srtypeof(::_IntVec)     = SString("intvec")
+srtypeof(::_IntMat)     = SString("intmat")
+srtypeof(::_BigIntMat)  = SString("bigintmat")
+srtypeof(::_List)       = SString("list")
 
 
 srsize(a::SName) = srsize(sr_make(a))
@@ -1923,7 +1924,7 @@ function make_copy(a)
     if isa(a, SName)
         return Expr(:call, :sr_copy, Expr(:call, :sr_make, a))
     else
-        return a
+        return Expr(:call, :sr_copy_allow_tuple, a)
     end
 end
 
@@ -2557,11 +2558,107 @@ function convert_typecmd(a::AstNode, env::AstEnv)
     return t
 end
 
+struct CoeffType1
+    characteristic::Int
+end
+
+struct CoeffType2
+end
+
+struct CoeffType3
+end
+
+function make_ring_coeffs(a::AstNode, env::AstEnv)
+    @assert 0 < a.rule - @RULE_rlist(0) < 100
+    if a.rule == @RULE_rlist(1)
+        b = a.child[1]
+        if b.rule == @RULE_expr(2) && b.child[1].rule == @RULE_elemexpr(2) && 
+                    b.child[1].child[1].rule == @RULE_extendedid(1) &&
+                    b.child[1].child[1].child[1] == "real"
+            return Expr(:call, :CoeffType3)
+        else
+            return Expr(:call, :CoeffType1, make_copy(convert_expr(b, env)))
+        end
+    elseif 0 < a.rule - @RULE_elemexpr(0) < 100
+        throw(TranspileError("internal error in make_ring_coeffs"))
+    else
+        throw(TranspileError("internal error in make_ring_coeffs"))
+    end
+end
+
+function push_ring_var_expr!(r::Expr, a::AstNode, anv::AstEnv)
+println("push_ring_var_expr")
+astprint(a, 0)
+    @assert 0 < a.rule - @RULE_expr(0) < 100
+    if a.rule == @RULE_expr(2) && a.child[1].rule == @RULE_elemexpr(2) &&
+                        a.child[1].child[1].rule == @RULE_extendedid(1)
+        push!(r.args, makeunknown(a.child[1].child[1].child[1]::String))
+    else
+        throw(TranspileError("internal error in push_ring_var_expr"))
+    end
+end
+
+function make_ring_vars(a::AstNode, env::AstEnv)
+    @assert 0 < a.rule - @RULE_rlist(0) < 100
+    r = Expr(:tuple)
+    if a.rule == @RULE_rlist(1)
+        push_ring_var_expr!(r, a.child[1], env::AstEnv)
+    elseif a.rule == @RULE_rlist(2)
+        push_ring_var_expr!(r, a.child[1], env::AstEnv)
+        for b in a.child[2].child
+            push_ring_var_expr!(r, b, env::AstEnv)
+        end
+    else
+        throw(TranspileError("internal error in make_ring_coeffs"))
+    end
+    return r
+end
+
+function push_ordering_orderelem!(r::Expr, a::AstNode, anv::AstEnv)
+    @assert 0 < a.rule - @RULE_orderelem(0) < 100
+    if a.rule == @RULE_orderelem(1)
+        push!(r.args, Expr(:call, :OrderingType, a.child[1].child[1], Any[]))
+    else
+        throw(TranspileError("internal error in push_ordering_orderelem"))
+    end
+end
+
+function make_ring_ordering(a::AstNode, env::AstEnv)
+    @assert 0 < a.rule - @RULE_ordering(0) < 100
+    r = Expr(:tuple)
+    if a.rule == @RULE_ordering(1)
+        push_ordering_orderelem!(r, a.child[1], env)
+    else
+        throw(TranspileError("internal error in make_ring_ordering"))        
+    end
+    return r
+end
+
+
+function convert_ringcmd(a::AstNode, env::AstEnv)
+    @assert 0 < a.rule - @RULE_ringcmd(0) < 100
+    r = Expr(:block)
+    if a.rule == @RULE_ringcmd(1)
+        m = a.child[1]
+        (m.rule == @RULE_elemexpr(2) && m.child[1].rule == @RULE_extendedid(1)) || throw(TranspileError("declaration expects identifer name"))
+        x = makeunknown(m.child[1].child[1]::String)
+        push!(r.args, Expr(:call, :sr_declare_ring, x))
+        push!(r.args, Expr(:call, :srassign, x, Expr(:call, :sr_make_ring, make_ring_coeffs(a.child[2], env),
+                                                                    make_ring_vars(a.child[3], env),
+                                                                    make_ring_ordering(a.child[4], env))))
+        return r
+    else
+        throw(TranspileError("internal error in convert_ringcmd"))
+    end
+end
+
 
 function convert_command(a::AstNode, env::AstEnv)
     @assert 0 < a.rule - @RULE_command(0) < 100
     if a.rule == @RULE_command(1)
         return convert_assign(a.child[1], env)
+    elseif a.rule == @RULE_command(6)
+        return convert_ringcmd(a.child[1], env)
     elseif a.rule == @RULE_command(9)
         return convert_typecmd(a.child[1], env)
     else
@@ -2985,6 +3082,6 @@ function srun(s::String)
         println("--------transpiled code--------")
         for i in expr.args; println(i); end;
         println("-------------------------------")
-        eval(expr)
+        #eval(expr)
     end
 end

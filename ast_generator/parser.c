@@ -247,8 +247,13 @@ jl_value_t * singular_parse(
     for (size_t i = 0; i < length; i++)
         stringlist_insert(&prev_newstruct_names, names[i]);
 
-    mjl_make_fxn = jl_get_function(jl_main_module, "AstNodeMake");
+    jl_value_t * mod = (jl_value_t *) jl_eval_string("SingularInterpreter");
+    mjl_make_fxn = jl_get_function((jl_module_t *) mod, "AstNodeMake");
 
+
+/*
+    mjl_make_fxn = jl_get_function(jl_main_module, "AstNodeMake");
+*/
     JL_GC_PUSH1(&mjl_make_fxn);
 
     astree * retv = NULL;

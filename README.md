@@ -291,6 +291,43 @@ x+y+z
 x+y+z
 ```
 
+(14) The type of the coefficient ring is not discernible from the ring declaration
+`ring r = (real, i, j), (x, y), dp;`. Compare three possible environments.
+
+```
+> int i = 8;
+> ring r = (real, i, j), (x, y), dp;
+> r;
+// coefficients: real[j](complex:8 digits, additional 8 digits)/(j^2+1)
+// number of vars : 2
+//        block   1 : ordering dp
+//                  : names    x y
+//        block   2 : ordering C
+```
+
+```
+> int i, j = 7, 8;
+> ring r = (real, i, j), (x, y), dp;
+> r;
+// coefficients: Float(7,8)
+// number of vars : 2
+//        block   1 : ordering dp
+//                  : names    x y
+//        block   2 : ordering C
+```
+
+```
+> int real = 7;
+> ring r = (real, i, j), (x, y), dp;
+> r;
+// coefficients: ZZ/7(i, j)
+// number of vars : 2
+//        block   1 : ordering dp
+//                  : names    x y
+//        block   2 : ordering C
+```
+
+
 Conclusion: In its full generality, Singular's identifer resolution is the death
 of compilation. If we can change (5) and (9-10), then we can have faster
 ring-independent types inside functions because types will then fit into
