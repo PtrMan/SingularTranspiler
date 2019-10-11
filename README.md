@@ -38,7 +38,7 @@ Array{Any}((2,))
 
 Some problems:
 
-(1) With the grammar/scanner rules as implmented in Singular, the input
+(1) With the grammar/scanner rules as implemented in Singular, the input
 ```
 proc f(int i)
 {
@@ -139,9 +139,8 @@ proc g(int i)
     {
         return(i, i);
     }
-}
-
-f(1, g(2), 3)
+};
+f(1, g(2), 3);
 ```
 
 (7) Singular plays fast and loose with unknown identifiers.
@@ -174,7 +173,7 @@ proc g() {return(1, x););
 
 
 
-(8) Besides the second-class types instantiated in unknown identifiers and tuples, there is a "nothing" that can be passed around.
+(8) (no big deal) Besides the second-class types instantiated in unknown identifiers and tuples, there is a "nothing" that can be passed around.
 ```
 > proc f() {return();};
 > list k; k[10]=0;
@@ -276,7 +275,7 @@ ideal
 > g(5); // this is 4*4 + 3*3, not the fifth Fibonacci number
 ```
 
-(13) Singular allows polys to have the same names as ring variable names.
+(13) (no big deal) Singular allows polys to have the same names as ring variable names.
 ```
 > ring r = 0, (x, y, z), lp;
 > x + y + z;
@@ -291,7 +290,7 @@ x+y+z
 x+y+z
 ```
 
-(14) The type of the coefficient ring is not discernible from the ring declaration
+(14) (no big deal) The type of the coefficient ring is not discernible from the ring declaration
 `ring r = (real, i, j), (x, y), dp;`. Compare three possible environments.
 
 ```
@@ -327,7 +326,97 @@ x+y+z
 //        block   2 : ordering C
 ```
 
+(15) (no big deal) If there is a global variable `int j` (or any other ring
+indep type) defined, there does not seem to be a way for `g` to use the
+imaginary unit `j` declared in `f` (without passing it as a parameter).
+```
+> int j = 7;
+> proc f()
+> {
+>     ring r = (complex, 10, 20, j), (x, y), dp;
+>     g()
+> };
+> proc g()
+> {
+>     1 + 2*j;
+>     typeof(1 + 2*j);
+> };
+> f();
+15
+int
+```
+compare with:
+```
+> int j = 7;
+> proc f()
+> {
+>     ring r = (complex, 10, 20, j), (x, y), dp;
+>     g(j)
+> };
+> proc g(number j)
+> {
+>     1 + 2*j;
+>     typeof(1 + 2*j);
+> };
+> f();
+(1+j*2)
+number
+```
+and without `j` defined:
+```
+> proc f()
+> {
+>     ring r = (complex, 10, 20, j), (x, y), dp;
+>     g()
+> };
+> proc g()
+> {
+>     1 + 2*j;
+>     typeof(1 + 2*j);
+> };
+> f();
+(1+j*2)
+number
+```
 
+(16) (no big deal) The thingy `_` is supposed to mean the "value of expression displayed last"
+but its behaviour is quite unpredictable.
+
+expected:
+```
+> 2; int a = 3;
+2
+> _;
+2
+```
+unexpected:
+```
+> 1, 2;
+1 2
+> _;
+1
+```
+unexpected:
+```
+> proc f(){1;};
+> 2;
+2
+> f();
+1
+> _;
+   ? ...parse error
+   ? error occurred in or before STDIN line 4: `_;`
+```
+simply calling a proc leads to unexpected behaviour:
+> proc f(){return(2);};
+> 1; int a = f();
+1
+> _;
+   ? ...parse error
+   ? error occurred in or before STDIN line 3: `_;`
+
+
+-------------------------------
 Conclusion: In its full generality, Singular's identifer resolution is the death
 of compilation. If we can change (5) and (9-10), then we can have faster
 ring-independent types inside functions because types will then fit into

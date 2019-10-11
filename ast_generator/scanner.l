@@ -384,7 +384,7 @@ newline                  {
                             }
                             if (rc)
                             {
-printf("SCANNER: %s RETURN %d with lpval->i = %d\n", yytext, rc, lvalp->i);
+//printf("SCANNER: %s RETURN %d with lpval->i = %d\n", yytext, rc, lvalp->i);
                                 return rc;
                             }
 
@@ -392,12 +392,12 @@ printf("SCANNER: %s RETURN %d with lpval->i = %d\n", yytext, rc, lvalp->i);
                             if (   stringlist_has(&prev_newstruct_names, lvalp->name)
                                 || stringlist_has(&new_newstruct_names, lvalp->name))
                             {
-printf("SCANNER: %s RETURN (ROOT_DECL_NEWSTRUCT)\n", yytext);
+//printf("SCANNER: %s RETURN (ROOT_DECL_NEWSTRUCT)\n", yytext);
                                 return ROOT_DECL_NEWSTRUCT;
                             }
                             else
                             {
-printf("SCANNER: %s RETURN (UNKNOWN_IDENT)\n", yytext);
+//printf("SCANNER: %s RETURN (UNKNOWN_IDENT)\n", yytext);
                                 return UNKNOWN_IDENT;
                             }
                         }

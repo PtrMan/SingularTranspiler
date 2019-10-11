@@ -15,7 +15,7 @@
 #include "tok.h"
 #include "grammar.tab.h"
 
-#define JLGRAMMAR_DBGMASK (1 + 2)
+#define JLGRAMMAR_DBGMASK (0 + 0)
 
 
 extern int   yylineno;
