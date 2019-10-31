@@ -408,13 +408,14 @@ unexpected:
    ? error occurred in or before STDIN line 4: `_;`
 ```
 simply calling a proc leads to unexpected behaviour:
+```
 > proc f(){return(2);};
 > 1; int a = f();
 1
 > _;
    ? ...parse error
    ? error occurred in or before STDIN line 3: `_;`
-
+```
 
 -------------------------------
 Conclusion: In its full generality, Singular's identifer resolution is the death
@@ -521,4 +522,67 @@ proc f(...) {
     ... // fast i in here
 }
 ```
+
+
+
+# Packages
+
+Packages give a prefix on identifers to help avoid naming conflicts.
+Identifiers without such a prefix use the "Current" package, which is
+    - the package `Top` at the global level
+    - the package of the procedure when inside a proc
+
+This means that each proc has an associated package.
+    - proc's declared through the LIB command probably get their package through the name of the library
+    - proc declared elsewise inherit their package?
+
+
+Why the following behaviour?
+```
+> int i = 7;
+> int Test::i = 6;
+Test of type 'ANY'. Trying load.
+   ? 'Test' no such package
+   ? error occurred in or before STDIN line 2: `int Test::i = 6;`
+   ? wrong type declaration. type 'help int;'
+> i;
+7
+> listvar(Test);
+   ? Test is undefined
+   ? error occurred in or before STDIN line 4: `listvar(Test);`
+> package Test;
+> i;
+7
+> int Test::i = 6;
+// ** redefining i (int Test::i = 6;)
+> i;
+   ? `i` is undefined
+   ? error occurred in or before STDIN line 8: `i;`
+> package Top;
+   ? identifier `Top` in use
+   ? error occurred in or before STDIN line 9: `package Top;`
+> i;
+   ? `i` is undefined
+   ? error occurred in or before STDIN line 10: `i;`
+> package Current;
+   ? identifier `Top` in use
+   ? error occurred in or before STDIN line 11: `package Current;`
+> Current;
+ Top (T)
+
+```
+
+Unfortunately, it is possible to declare local variables with a prefix.
+```
+> package Test;
+> proc f() {int Test::i = 5; return(Test::i);};
+> f();
+5
+> listvar(Test);
+// Test                           [0]  package Test (N)
+```
+
+However, the only way the Current package can change is through proc calls.
+Therefore, local variables with a prefix are quite useless unless they are exported.
+
 
