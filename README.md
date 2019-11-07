@@ -275,7 +275,7 @@ ideal
 > g(5); // this is 4*4 + 3*3, not the fifth Fibonacci number
 ```
 
-(13) (no big deal) Singular allows polys to have the same names as ring variable names.
+(13) (no big deal - fun curiousity) Singular allows polys to have the same names as ring variable names.
 ```
 > ring r = 0, (x, y, z), lp;
 > x + y + z;
@@ -290,7 +290,7 @@ x+y+z
 x+y+z
 ```
 
-(14) (no big deal) The type of the coefficient ring is not discernible from the ring declaration
+(14) (no big deal - fun curiousity) The type of the coefficient ring is not discernible from the ring declaration
 `ring r = (real, i, j), (x, y), dp;`. Compare three possible environments.
 
 ```
@@ -326,7 +326,7 @@ x+y+z
 //        block   2 : ordering C
 ```
 
-(15) (no big deal) If there is a global variable `int j` (or any other ring
+(15) (no big deal - `par` keyword addresses this) If there is a global variable `int j` (or any other ring
 indep type) defined, there does not seem to be a way for `g` to use the
 imaginary unit `j` declared in `f` (without passing it as a parameter).
 ```
@@ -416,6 +416,105 @@ simply calling a proc leads to unexpected behaviour:
    ? ...parse error
    ? error occurred in or before STDIN line 3: `_;`
 ```
+
+(17) (should fix) The grammar.y of singular is terribly ambiguous. If the
+following behaviour is the desired one, the current grammar.y is providing
+this behaviour seemingly _only by accident_.
+
+```
+list(a, b);  // construct a list then print it
+list a, b;   // declare two lists
+```
+
+
+
+(18) (executes compilation hope) `execute` Why is execute needed here
+https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/ellipticcovers.lib#L492
+
+Can it not be written as follows?
+```
+proc lsum(list L)
+{
+    def s = L[1];
+    for (int j = 2; j <= size(L); j++)
+    {
+        s = s + L[j];
+    }
+    return(s);
+}
+```
+
+(19) (should fix c) singular has problems with ring depended members of newstructs.
+When a ring dependent member from a ring other than the current ring is used, singular does not catch this and essentially crashes.
+
+```
+> newstruct("foo", "poly p");
+> ring r = 0,(x,y),lp;
+> foo f; f.p = x+y; f.p;
+x+y
+> ring s = 7,(u,v); dp;
+   ? error occurred in or before STDIN line 4: `ring s = 7,(u,v); dp;`
+   ? expected ring-expression. type 'help ring;'
+   ? last reserved name was `ring`
+ error at token `;`
+   ? `dp` is undefined
+   ? error occurred in or before STDIN line 4: `ring s = 7,(u,v); dp;`
+> ring s = 7,(u,v), dp;
+> f.p^2;
+-3+gen(-1111928496)-3*gen(2071110304)
+```
+
+
+(20) (obliterates the notion of compilation) `` ` ` `` the _sneaky execute_
+The backtick is used to take an object of type `string` and essentially insert it into the
+code as if the user had typed the identifier herself.
+This metaprogramming construction is so bad it makes one wish execute were used instead.
+
+On left hand sides it is a pathological (but allowed!) case.
+```
+> string s = "i";
+> int `s` = 6;
+> i;
+6
+```
+
+It is also quite uncomfortable on the right hand side because it is _a function that can return a name_.
+```
+> ring r = 0,(x,y,z),lp;
+> poly p = x + y^2 + z^3;
+> ring R = 0,(X,Y,Z),lp;
+> imap(r, p);       // imap and fetch operate on names (not objects) as arguments
+0
+> fetch(r, p);
+X+Y2+Z3
+> string a = "r";
+> string b = "p";
+> fetch(`a`, `b`);  // same as fetch(r, p)
+X+Y2+Z3
+```
+
+It is also possible to use it for the variables of ring declarations!
+
+offending libraries:
+
+https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/deform.lib#L123
+https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/finitediff.lib#L197
+https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/finitediff.lib#L267
+https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/finvar.lib#L566
+https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/finvar.lib#L702
+https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/general.lib#L371
+https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/graphics.lib#L234
+oh no! it can return a tuple of names too https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/hnoether.lib#L2463
+https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/inout.lib#L373
+https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/KVequiv.lib#L442
+https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/latex.lib#L686
+https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/modstd.lib#L645
+https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/ncModslimgb.lib#L484
+https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/normaliz.lib#L111
+https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/ring.lib#L590
+https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/ring.lib#L793
+what? https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/solve.lib#L657
+https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/standard.lib#L680
 
 -------------------------------
 Conclusion: In its full generality, Singular's identifer resolution is the death
