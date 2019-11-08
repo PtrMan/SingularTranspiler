@@ -472,6 +472,7 @@ The backtick is used to take an object of type `string` and essentially insert i
 This metaprogramming construction is so bad it makes one wish execute were used instead.
 
 On left hand sides it is a pathological (but allowed!) case.
+
 ```
 > string s = "i";
 > int `s` = 6;
@@ -490,11 +491,26 @@ It is also quite uncomfortable on the right hand side because it is _a function 
 X+Y2+Z3
 > string a = "r";
 > string b = "p";
-> fetch(`a`, `b`);  // same as fetch(r, p)
+> fetch(`a`, `b`);  // calls fetch(r, p)
 X+Y2+Z3
 ```
 
-It is also possible to use backticks for the variables of ring declarations!
+It is also possible to use backticks for the variables of ring declarations.
+
+Due to a limitation of the parser, the backticks do not work to call kernel commands.
+This is a good thing because kernel commands can be deduced from lexical analysis.
+```
+> proc f() {1+2;};
+> string s = "f";
+> `s`();
+3
+> s = "execute";
+> `s`("1+2;");
+   ? `execute` is not defined
+fxn call error 0
+   ? error occurred in or before STDIN line 5: ``s`("1+2;");`
+```
+
 
 offending libraries:
 
@@ -535,7 +551,7 @@ what? https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/solve.lib
 https://github.com/Singular/Sources/blob/spielwiese/Singular/LIB/standard.lib#L680
 
 
-(21) packages. package-qualified identifers have unpredictable behaviour
+(21) packages. package-qualified identifiers have unpredictable behaviour
 
 Packages give a prefix on identifers to help avoid naming conflicts.
 Identifiers without such a prefix use the "Current" package, which is
