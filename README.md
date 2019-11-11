@@ -417,17 +417,44 @@ simply calling a proc leads to unexpected behaviour:
    ? error occurred in or before STDIN line 3: `_;`
 ```
 
-(17) (should fix) The grammar of singular is terribly ambiguous. If the
-following behaviour is the desired one, the current grammar.y is providing
-this behaviour seemingly _only by accident_.
+(17) (should fix) The grammar of singular is terribly ambiguous. https://www.gnu.org/software/bison/manual/html_node/Reduce_002fReduce.html
+If the following behaviour is the desired one, the current grammar.y is providing this behaviour seemingly _only by accident_.
 
 ```
 list(a, b);  // construct a list then print it
 list a, b;   // declare two lists
 ```
 
-approximately 9 shift/reduce conflicts
-approximately 68 reduce/reduce conflicts
+Here is a parse tree following grammar.y and ending with `list(a, b);` as a declaration.
+
+```
+|                          pprompt                           |
+|                declare\_ip\_variable                     | ; |
+| ROOT\_DECL\_LIST |              elemexpr               | ; |
+| ROOT\_DECL\_LIST | '(' |        exprlist         | ')' | ; |
+| ROOT\_DECL\_LIST | '(' | exprlist | , | expr     | ')' | ; |
+| ROOT\_DECL\_LIST | '(' | expr     | , | expr     | ')' | ; |
+| ROOT\_DECL\_LIST | '(' | elemexpr | , | elemexpr | ')' | ; |
+      list          (      a        ,      b        )    ;
+```
+
+Here is a parse tree following the same grammar.y and ending with `list(a, b);` as a construction and print.
+
+```
+|                           pprompt                            |
+|                       command                            | ; |
+|                       typecmd                            | ; |
+|                       exprlist                           | ; |
+|                         expr                             | ; |
+|                       elemexpr                           | ; |
+|   ROOT\_DECL\_LIST | '(' |         exprlist        | ')' | ; |
+|   ROOT\_DECL\_LIST | '(' | exprlist | , |   expr   | ')' | ; |
+|   ROOT\_DECL\_LIST | '(' | expr     | , |   expr   | ')' | ; |
+|   ROOT\_DECL\_LIST | '(' | elemexpr | , | elemexpr | ')' | ; |
+      list            (     a         ,      b        )    ;
+```
+
+"fixing" this drops the number of reduce/reduce conflicts by 40.
 
 
 (18) (executes compilation hope) `execute` Why is execute needed here
@@ -614,46 +641,68 @@ Therefore, local variables with a prefix are quite useless unless they are expor
 
 
 -------------------------------
-Conclusion: In its full generality, Singular's identifer resolution is the death
-of compilation. If we can change (5) and (9-10), then we can have faster
-ring-independent types inside functions because types will then fit into
-two (or three?) categories:
 
-(1) ring-independent types: `int, bigint, intvec, intmat, bigintmat, list, proc, newstruct`
-    When `int i` is used inside a function, every `i` can be assumed to be a
-    reference to the same lookup table. When this is not the case, the runtime (or even transpiler)
-    can check and issue a warning or error. When ring-independent types are
-    used at the top level, they revert back to the slow look-everything-up
-    implementation.
+Conclusion: The Singular language is completely different from C or Julia.
+Singular's identifer resolution is the death of compilation, and further
+difficulties arise because variable declarations leak outside of blocks.
 
-(1.5) "ring" type.
-    Rings are ring-independent but may have different lookup rules from (1).
-    They also need special handlers because they change the lookup space for (2).
-
-(2) ring-dependent types: `poly, matrix, ideal, ...`
-    These will always be implemented with symbols and a slow runtime lookup.
-    If you have a `poly p` in your function and `p` elsewhere in the same function,
-    determining if these refer to a `p` in the same lookup table is a non-trivial
-    code analysis problem. Changing this will probably break too much code.
+```
+proc f(...) {
+    ...
+    if (...) {
+        int i;
+    }
+    i; // it is that int OR whatever it was before
+    ...
+}
+```
 
 
-It is quite possible to do fine without changing (5). Each variable of ring
-independent type declared inside a function could either get "the fast treatment"
-or "the slow treatment" at transpile time. For an `int i`,
-    fast treatment: a real local variable `local i::Int` is put inside of
-                    the julia function and uses of `i` inside this function
-                    completely bypass the lookup mechanism
-    slow treatment: `i` is used as `SName(:i)` and everything goes through
-                    the lookup tables.
+In order to maintain compatibility with the Singular language, the Julia interpreter
+currently maintains _all_ variables (local and global) in a lookup table.
+With an `int i` inside a procedure, the julia code could go faster if there was,
+instead of an entry in a table, a `local i::Int` directly in the julia code.
+However, the correctness of such a transformation can only be determined through
+difficult code analysis.
 
-The top level of the body of a Singular `proc` is a sequence of statements. If
-one of these statements is an `int i`, then we can put a `local i::Int = 0` right
-there in the julia code have all uses of `i` in the succeeding statements simply use `i`.
-If `i` is ever killed, executed, or redeclared as something other than an `int` in the
-succeeding statements, then this optimization does not apply anymore.
 
-Because of examples like (9), this optimization currently does not apply to
-lists, so lists must always receive the slow treatment unless (9) is changed.
+In terms of the local variables of a procedure, the following commands will
+immediately prevent _every local variable_ from going faster:
+
+- `execute` https://www.singular.uni-kl.de/Manual/4-0-3/sing_289.htm#SEC328
+
+- backticks https://www.singular.uni-kl.de/Manual/4-0-3/sing_36.htm#IDX106
+
+- `kill` https://www.singular.uni-kl.de/Manual/4-0-3/sing_325.htm#SEC364
+
+The following commands will immediately prevent _every ring dependent local variable_ from going faster:
+
+- Any command that changes the current basering `ring r = `, `setring r`, ect.
+
+- `imap`, `fetch` https://www.singular.uni-kl.de/Manual/4-0-3/sing_295.htm#SEC334
+
+
+There are probably more commands that are immediate showstoppers. Other strange
+commands with unknown effects:
+
+- `defined` The main problem is that `defined` can take a string argument. https://www.singular.uni-kl.de/Manual/4-0-3/sing_275.htm#SEC314
+
+- `nameof` https://www.singular.uni-kl.de/Manual/4-0-3/sing_355.htm#SEC394
+
+- `eval` https://www.singular.uni-kl.de/Manual/4-0-3/sing_286.htm#SEC325
+
+- `getdump` https://www.singular.uni-kl.de/Manual/4-0-3/sing_306.htm#SEC345
+
+- `killattrib` https://www.singular.uni-kl.de/Manual/4-0-3/sing_326.htm#SEC365
+
+- `monitor` https://www.singular.uni-kl.de/Manual/4-0-3/sing_349.htm#SEC388
+
+- `names` https://www.singular.uni-kl.de/Manual/4-0-3/sing_356.htm#SEC395
+
+
+
+
+
 
 `i` gets the slow treament everywhere (even if we had real code analysis):
 ```
