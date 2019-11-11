@@ -428,33 +428,33 @@ list a, b;   // declare two lists
 Here is a parse tree following grammar.y and ending with `list(a, b);` as a declaration.
 
 ```
-|                          pprompt                           |
-|                declare\_ip\_variable                     | ; |
-| ROOT\_DECL\_LIST |              elemexpr               | ; |
-| ROOT\_DECL\_LIST | '(' |        exprlist         | ')' | ; |
-| ROOT\_DECL\_LIST | '(' | exprlist | , | expr     | ')' | ; |
-| ROOT\_DECL\_LIST | '(' | expr     | , | expr     | ')' | ; |
-| ROOT\_DECL\_LIST | '(' | elemexpr | , | elemexpr | ')' | ; |
+|                          pprompt                         |
+|                declare_ip_variable                   | ; |
+| ROOT_DECL_LIST |              elemexpr               | ; |
+| ROOT_DECL_LIST | '(' |        exprlist         | ')' | ; |
+| ROOT_DECL_LIST | '(' | exprlist | , | expr     | ')' | ; |
+| ROOT_DECL_LIST | '(' | expr     | , | expr     | ')' | ; |
+| ROOT_DECL_LIST | '(' | elemexpr | , | elemexpr | ')' | ; |
       list          (      a        ,      b        )    ;
 ```
 
 Here is a parse tree following the same grammar.y and ending with `list(a, b);` as a construction and print.
 
 ```
-|                           pprompt                            |
-|                       command                            | ; |
-|                       typecmd                            | ; |
-|                       exprlist                           | ; |
-|                         expr                             | ; |
-|                       elemexpr                           | ; |
-|   ROOT\_DECL\_LIST | '(' |         exprlist        | ')' | ; |
-|   ROOT\_DECL\_LIST | '(' | exprlist | , |   expr   | ')' | ; |
-|   ROOT\_DECL\_LIST | '(' | expr     | , |   expr   | ')' | ; |
-|   ROOT\_DECL\_LIST | '(' | elemexpr | , | elemexpr | ')' | ; |
+|                           pprompt                          |
+|                       command                          | ; |
+|                       typecmd                          | ; |
+|                       exprlist                         | ; |
+|                         expr                           | ; |
+|                       elemexpr                         | ; |
+|   ROOT_DECL_LIST | '(' |         exprlist        | ')' | ; |
+|   ROOT_DECL_LIST | '(' | exprlist | , |   expr   | ')' | ; |
+|   ROOT_DECL_LIST | '(' | expr     | , |   expr   | ')' | ; |
+|   ROOT_DECL_LIST | '(' | elemexpr | , | elemexpr | ')' | ; |
       list            (     a         ,      b        )    ;
 ```
 
-"fixing" this drops the number of reduce/reduce conflicts by 40.
+"fixing" this issue alone drops the number of reduce/reduce conflicts by 40.
 
 
 (18) (executes compilation hope) `execute` Why is execute needed here
