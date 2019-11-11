@@ -675,6 +675,10 @@ from going faster. This list is probably not complete.
 
 - `kill` https://www.singular.uni-kl.de/Manual/4-0-3/sing_325.htm#SEC364
 
+The following keywords simply cannot be dealt with and will be considered a syntax error.
+
+- `parameter`
+
 The following commands will immediately prevent _every ring dependent local variable_
 from going faster. This list is probably also not complete.
 
