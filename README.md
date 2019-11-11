@@ -657,7 +657,6 @@ proc f(...) {
 }
 ```
 
-
 In order to maintain compatibility with the Singular language, the Julia interpreter
 currently maintains _all_ variables (local and global) in a lookup table.
 With an `int i` inside a procedure, the julia code could go faster if there was,
@@ -666,8 +665,9 @@ However, the correctness of such a transformation can only be determined through
 difficult code analysis.
 
 
-In terms of the local variables of a procedure, the following commands will
-immediately prevent _every local variable_ from going faster:
+In terms of the local variables of a procedure, the lexical presence of any of
+the following commands will immediately prevent _every local variable_ from going
+faster. This list is probably not complete.
 
 - `execute` https://www.singular.uni-kl.de/Manual/4-0-3/sing_289.htm#SEC328
 
@@ -675,7 +675,8 @@ immediately prevent _every local variable_ from going faster:
 
 - `kill` https://www.singular.uni-kl.de/Manual/4-0-3/sing_325.htm#SEC364
 
-The following commands will immediately prevent _every ring dependent local variable_ from going faster:
+The following commands will immediately prevent _every ring dependent local variable_
+from going faster. This list is probably also not complete.
 
 - Any command that changes the current basering `ring r = `, `setring r`, ect.
 
@@ -701,7 +702,9 @@ commands with unknown effects:
 
 
 
+----------------------------------------------
 
+examples of fast/slow variables.
 
 
 `i` gets the slow treament everywhere (even if we had real code analysis):
