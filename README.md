@@ -666,8 +666,8 @@ difficult code analysis.
 
 
 In terms of the local variables of a procedure, the lexical presence of any of
-the following commands will immediately prevent _every local variable_ from going
-faster. This list is probably not complete.
+the following commands in a procedure will immediately prevent _every local variable_
+from going faster. This list is probably not complete.
 
 - `execute` https://www.singular.uni-kl.de/Manual/4-0-3/sing_289.htm#SEC328
 
