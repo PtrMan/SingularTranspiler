@@ -679,6 +679,8 @@ The following keywords simply cannot be dealt with and will be considered a synt
 
 - `parameter`
 
+- `keepring`
+
 The following commands will immediately prevent _every ring dependent local variable_
 from going faster. This list is probably also not complete.
 
